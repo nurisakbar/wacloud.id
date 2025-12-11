@@ -3,8 +3,98 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dokumentasi - WAHA Gateway</title>
-    <meta name="description" content="Dokumentasi lengkap untuk WAHA Gateway API. Pelajari cara mengintegrasikan WhatsApp ke aplikasi Anda.">
+    <title>Dokumentasi API - WACloud.id | Panduan Lengkap Integrasi WhatsApp</title>
+    <meta name="description" content="Dokumentasi lengkap untuk WACloud API. Pelajari cara mengintegrasikan WhatsApp ke aplikasi Anda dengan contoh kode PHP, Node.js, Python, dan Golang.">
+    <meta name="keywords" content="WACloud API documentation, WhatsApp API docs, WACloud tutorial, WhatsApp integration guide, API documentation, REST API, WhatsApp Gateway documentation, WACloud examples">
+    <meta name="author" content="WACloud">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="language" content="Indonesian">
+    <meta name="revisit-after" content="7 days">
+    <link rel="canonical" href="https://wacloud.id/docs.html">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://wacloud.id/docs.html">
+    <meta property="og:title" content="Dokumentasi API - WACloud.id | Panduan Lengkap Integrasi WhatsApp">
+    <meta property="og:description" content="Dokumentasi lengkap untuk WACloud API. Pelajari cara mengintegrasikan WhatsApp ke aplikasi Anda dengan contoh kode PHP, Node.js, Python, dan Golang.">
+    <meta property="og:image" content="https://wacloud.id/logo-wacloud.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="WACloud API Documentation">
+    <meta property="og:site_name" content="WACloud.id">
+    <meta property="og:locale" content="id_ID">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://wacloud.id/docs.html">
+    <meta name="twitter:title" content="Dokumentasi API - WACloud.id | Panduan Lengkap Integrasi WhatsApp">
+    <meta name="twitter:description" content="Dokumentasi lengkap untuk WACloud API. Pelajari cara mengintegrasikan WhatsApp ke aplikasi Anda dengan contoh kode PHP, Node.js, Python, dan Golang.">
+    <meta name="twitter:image" content="https://wacloud.id/logo-wacloud.png">
+    <meta name="twitter:image:alt" content="WACloud API Documentation">
+    
+    <!-- AI-Friendly Meta Tags -->
+    <meta name="ai:model" content="WACloud API Documentation">
+    <meta name="ai:category" content="API Documentation, Developer Guide, Technical Documentation">
+    <meta name="ai:use_case" content="API Integration, Developer Reference, Code Examples, Tutorial">
+    <meta name="ai:programming_languages" content="PHP, Node.js, Python, Golang, JavaScript">
+    <meta name="ai:api_endpoints" content="REST API, Webhook, Device Management, Message Sending">
+    
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "Dokumentasi API WACloud - Panduan Lengkap Integrasi WhatsApp",
+      "description": "Dokumentasi lengkap untuk WACloud API dengan contoh kode untuk berbagai bahasa pemrograman",
+      "image": "https://wacloud.id/logo-wacloud.png",
+      "author": {
+        "@type": "Organization",
+        "name": "WACloud",
+        "url": "https://wacloud.id"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "WACloud",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://wacloud.id/logo-wacloud.png"
+        }
+      },
+      "datePublished": "2025-01-01",
+      "dateModified": "2025-01-01",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://wacloud.id/docs.html"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "WhatsApp API Integration"
+      },
+      "programmingLanguage": ["PHP", "Node.js", "Python", "Golang", "JavaScript"]
+    }
+    </script>
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "APIReference",
+      "name": "WACloud API",
+      "description": "RESTful API untuk integrasi WhatsApp",
+      "url": "https://wacloud.id/docs.html",
+      "provider": {
+        "@type": "Organization",
+        "name": "WACloud",
+        "url": "https://wacloud.id"
+      },
+      "documentation": "https://wacloud.id/docs.html",
+      "apiVersion": "v1",
+      "baseUrl": "https://app.wacloud.id/api/v1"
+    }
+    </script>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo-wacloud.png">
+    <link rel="apple-touch-icon" href="logo-wacloud.png">
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -409,7 +499,7 @@
     <nav class="navbar navbar-expand-lg navbar-light fixed-top">
         <div class="container">
             <a class="navbar-brand fw-bold fs-4" href="index.html">
-                <i class="fab fa-whatsapp text-success me-2"></i>
+                <img src="logo-wacloud.png" alt="WACloud" height="30" class="me-2" style="vertical-align: middle;">
                 WACloud.id
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -485,6 +575,7 @@
                             <a class="nav-link" href="#webhook">Webhook</a>
                             <a class="nav-link" href="#template">Template</a>
                             <a class="nav-link" href="#otp">OTP</a>
+                            <a class="nav-link" href="#contacts">Contacts</a>
                         </nav>
                     </div>
                 </div>
@@ -495,7 +586,7 @@
             <div class="docs-card" id="overview">
                 <h2>Overview</h2>
                 <p>
-                    WAHA Gateway menyediakan RESTful API yang powerful untuk mengintegrasikan WhatsApp ke dalam aplikasi Anda. 
+                    WACloud menyediakan RESTful API yang powerful untuk mengintegrasikan WhatsApp ke dalam aplikasi Anda. 
                     API ini dirancang khusus untuk developer dengan dokumentasi lengkap dan contoh kode yang mudah dipahami.
                 </p>
                 <div class="alert alert-info mt-4">
@@ -607,6 +698,38 @@
                         <span class="endpoint-url">/messages/otp</span>
                     </div>
                     <p class="text-muted mb-0">Mengirim kode OTP ke nomor tujuan.</p>
+                </div>
+                
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{device_id}/contacts</span>
+                    </div>
+                    <p class="text-muted mb-0">Mendapatkan daftar kontak untuk device tertentu.</p>
+                </div>
+                
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{device_id}/contacts/{contactId}</span>
+                    </div>
+                    <p class="text-muted mb-0">Mendapatkan informasi kontak tertentu.</p>
+                </div>
+                
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-put">PUT</span>
+                        <span class="endpoint-url">/devices/{device_id}/contacts/{chatId}</span>
+                    </div>
+                    <p class="text-muted mb-0">Memperbarui informasi kontak.</p>
+                </div>
+                
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{device_id}/contacts/check-exists</span>
+                    </div>
+                    <p class="text-muted mb-0">Memeriksa apakah nomor telepon terdaftar di WhatsApp.</p>
                 </div>
             </div>
 
@@ -836,7 +959,7 @@ axios.<span class="function">post</span>(url, data, {
             <!-- Message Types -->
             <div class="docs-card" id="message-types">
                 <h2>Jenis Pesan yang Didukung</h2>
-                <p>WAHA Gateway mendukung berbagai jenis pesan WhatsApp:</p>
+                <p>WACloud mendukung berbagai jenis pesan WhatsApp:</p>
                 
                 <h3>1. Text Message</h3>
                 <p>Pesan teks biasa.</p>
@@ -2336,7 +2459,7 @@ app.<span class="keyword">listen</span>(<span class="number">3000</span>, () => 
                     <ul class="mb-0">
                         <li>Pastikan URL webhook Anda dapat diakses dari internet (gunakan HTTPS untuk produksi)</li>
                         <li>Webhook akan otomatis retry jika endpoint Anda tidak merespons</li>
-                        <li>Gunakan signature verification untuk memastikan request berasal dari WAHA Gateway</li>
+                        <li>Gunakan signature verification untuk memastikan request berasal dari WACloud</li>
                     </ul>
                 </div>
             </div>
@@ -3710,6 +3833,494 @@ sendOTP();</code>
                 </div>
             </div>
 
+            <!-- Contacts -->
+            <div class="docs-card" id="contacts">
+                <h2>Contacts API</h2>
+                <p>
+                    Kelola kontak WhatsApp melalui API. Dapatkan daftar kontak, cek nomor terdaftar, update kontak, 
+                    dapatkan foto profil, blokir/unblokir kontak, dan kelola LIDs (Linked IDs).
+                </p>
+                
+                <h3>Mendapatkan Daftar Kontak</h3>
+                <p>Untuk mendapatkan daftar semua kontak untuk device tertentu dengan pagination:</p>
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">https://app.wacloud.id/api/v1/devices/{session}/contacts</span>
+                    </div>
+                    <p class="text-muted mb-3">Mendapatkan daftar semua kontak dengan pagination dan sorting.</p>
+                </div>
+                
+                <p class="mb-2"><strong>Query Parameters:</strong></p>
+                <ul class="mb-3">
+                    <li><code>limit</code> (optional, default: 100) - Jumlah kontak yang dikembalikan</li>
+                    <li><code>offset</code> (optional, default: 0) - Offset untuk pagination</li>
+                    <li><code>sortBy</code> (optional, default: 'id') - Field untuk sorting ('id' atau 'name')</li>
+                    <li><code>sortOrder</code> (optional, default: 'asc') - Urutan sorting ('asc' atau 'desc')</li>
+                </ul>
+                
+                <div class="code-tabs">
+                    <div class="code-tabs-header">
+                        <button class="code-tab active" onclick="switchCodeTab(this, 'contacts-list-curl')">cURL</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'contacts-list-php')">PHP</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'contacts-list-python')">Python</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'contacts-list-nodejs')">Node.js</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'contacts-list-javascript')">JavaScript</button>
+                    </div>
+                    <div id="contacts-list-curl" class="code-tab-content active">
+                        <div class="code-block">
+<code>curl -X GET "https://app.wacloud.id/api/v1/devices/default/contacts?limit=100&offset=0&sortBy=name&sortOrder=asc" \
+  -H "X-Api-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json"</code>
+                        </div>
+                    </div>
+                    <div id="contacts-list-php" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="comment">// Get all contacts</span>
+<span class="keyword">$apiKey</span> = <span class="string">'YOUR_API_KEY'</span>;
+<span class="keyword">$session</span> = <span class="string">'default'</span>;
+<span class="keyword">$url</span> = <span class="string">'https://app.wacloud.id/api/v1/devices/' . $session . '/contacts'</span>;
+
+<span class="keyword">$params</span> = [
+    <span class="string">'limit'</span> => <span class="number">100</span>,
+    <span class="string">'offset'</span> => <span class="number">0</span>,
+    <span class="string">'sortBy'</span> => <span class="string">'name'</span>,
+    <span class="string">'sortOrder'</span> => <span class="string">'asc'</span>
+];
+
+<span class="keyword">$ch</span> = <span class="function">curl_init</span>(<span class="keyword">$url</span> . <span class="string">'?' . http_build_query($params)</span>);
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_RETURNTRANSFER, <span class="keyword">true</span>);
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_HTTPHEADER, [
+    <span class="string">'X-Api-Key: ' . $apiKey</span>,
+    <span class="string">'Content-Type: application/json'</span>
+]);
+
+<span class="keyword">$response</span> = <span class="function">curl_exec</span>(<span class="keyword">$ch</span>);
+<span class="function">curl_close</span>(<span class="keyword">$ch</span>);
+
+<span class="keyword">$data</span> = <span class="function">json_decode</span>(<span class="keyword">$response</span>, <span class="keyword">true</span>);
+<span class="keyword">if</span> (<span class="keyword">$data</span>[<span class="string">'success'</span>]) {
+    <span class="keyword">foreach</span> (<span class="keyword">$data</span>[<span class="string">'data'</span>] <span class="keyword">as</span> <span class="keyword">$contact</span>) {
+        <span class="function">echo</span> <span class="string">"Contact: " . $contact['name'] . "\n"</span>;
+    }
+}</code>
+                        </div>
+                    </div>
+                    <div id="contacts-list-python" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="keyword">import</span> requests
+
+<span class="variable">api_key</span> = <span class="string">'YOUR_API_KEY'</span>
+<span class="variable">session</span> = <span class="string">'default'</span>
+<span class="variable">url</span> = <span class="string">f'https://app.wacloud.id/api/v1/devices/{session}/contacts'</span>
+
+<span class="variable">headers</span> = {
+    <span class="string">'X-Api-Key'</span>: <span class="variable">api_key</span>,
+    <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>
+}
+
+<span class="variable">params</span> = {
+    <span class="string">'limit'</span>: <span class="number">100</span>,
+    <span class="string">'offset'</span>: <span class="number">0</span>,
+    <span class="string">'sortBy'</span>: <span class="string">'name'</span>,
+    <span class="string">'sortOrder'</span>: <span class="string">'asc'</span>
+}
+
+<span class="variable">response</span> = requests.<span class="function">get</span>(<span class="variable">url</span>, <span class="variable">headers</span>=<span class="variable">headers</span>, <span class="variable">params</span>=<span class="variable">params</span>)
+
+<span class="keyword">if</span> <span class="variable">response</span>.status_code == <span class="number">200</span>:
+    <span class="variable">data</span> = <span class="variable">response</span>.<span class="function">json</span>()
+    <span class="keyword">if</span> <span class="variable">data</span>[<span class="string">'success'</span>]:
+        <span class="keyword">for</span> <span class="variable">contact</span> <span class="keyword">in</span> <span class="variable">data</span>[<span class="string">'data'</span>]:
+            <span class="function">print</span>(<span class="function">f</span>(<span class="string">"Contact: {contact['name']}"</span>))</code>
+                        </div>
+                    </div>
+                    <div id="contacts-list-nodejs" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="keyword">const</span> axios = <span class="function">require</span>(<span class="string">'axios'</span>);
+
+<span class="keyword">const</span> apiKey = <span class="string">'YOUR_API_KEY'</span>;
+<span class="keyword">const</span> session = <span class="string">'default'</span>;
+<span class="keyword">const</span> url = <span class="string">`https://app.wacloud.id/api/v1/devices/${session}/contacts`</span>;
+
+axios.<span class="function">get</span>(url, {
+    headers: {
+        <span class="string">'X-Api-Key'</span>: apiKey,
+        <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>
+    },
+    params: {
+        limit: <span class="number">100</span>,
+        offset: <span class="number">0</span>,
+        sortBy: <span class="string">'name'</span>,
+        sortOrder: <span class="string">'asc'</span>
+    }
+})
+.<span class="function">then</span>(response => {
+    <span class="keyword">if</span> (response.data.success) {
+        response.data.data.<span class="function">forEach</span>(contact => {
+            console.<span class="function">log</span>(<span class="string">`Contact: ${contact.name}`</span>);
+        });
+    }
+})
+.<span class="function">catch</span>(error => console.<span class="function">error</span>(error));</code>
+                        </div>
+                    </div>
+                    <div id="contacts-list-javascript" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="keyword">const</span> apiKey = <span class="string">'YOUR_API_KEY'</span>;
+<span class="keyword">const</span> session = <span class="string">'default'</span>;
+<span class="keyword">const</span> url = <span class="string">`https://app.wacloud.id/api/v1/devices/${session}/contacts`</span>;
+
+<span class="function">fetch</span>(url + <span class="string">'?limit=100&offset=0&sortBy=name&sortOrder=asc'</span>, {
+    method: <span class="string">'GET'</span>,
+    headers: {
+        <span class="string">'X-Api-Key'</span>: apiKey,
+        <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>
+    }
+})
+.<span class="function">then</span>(response => response.<span class="function">json</span>())
+.<span class="function">then</span>(data => {
+    <span class="keyword">if</span> (data.success) {
+        data.data.<span class="function">forEach</span>(contact => {
+            console.<span class="function">log</span>(<span class="string">`Contact: ${contact.name}`</span>);
+        });
+    }
+})
+.<span class="function">catch</span>(error => console.<span class="function">error</span>(error));</code>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Mendapatkan Kontak Tertentu</h3>
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{session}/contacts/{contactId}</span>
+                    </div>
+                    <p class="text-muted mb-3">Mendapatkan informasi kontak tertentu. Contact ID bisa berupa nomor telepon (123123123) atau chat ID (123123@c.us atau 123123@lid).</p>
+                </div>
+                
+                <div class="code-tabs">
+                    <div class="code-tabs-header">
+                        <button class="code-tab active" onclick="switchCodeTab(this, 'contact-get-curl')">cURL</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'contact-get-php')">PHP</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'contact-get-python')">Python</button>
+                    </div>
+                    <div id="contact-get-curl" class="code-tab-content active">
+                        <div class="code-block">
+<code>curl -X GET "https://app.wacloud.id/api/v1/devices/default/contacts/123123123@c.us" \
+  -H "X-Api-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json"</code>
+                        </div>
+                    </div>
+                    <div id="contact-get-php" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="keyword">$apiKey</span> = <span class="string">'YOUR_API_KEY'</span>;
+<span class="keyword">$session</span> = <span class="string">'default'</span>;
+<span class="keyword">$contactId</span> = <span class="string">'123123123@c.us'</span>;
+<span class="keyword">$url</span> = <span class="string">'https://app.wacloud.id/api/v1/devices/' . $session . '/contacts/' . $contactId</span>;
+
+<span class="keyword">$ch</span> = <span class="function">curl_init</span>(<span class="keyword">$url</span>);
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_RETURNTRANSFER, <span class="keyword">true</span>);
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_HTTPHEADER, [
+    <span class="string">'X-Api-Key: ' . $apiKey</span>,
+    <span class="string">'Content-Type: application/json'</span>
+]);
+
+<span class="keyword">$response</span> = <span class="function">curl_exec</span>(<span class="keyword">$ch</span>);
+<span class="function">curl_close</span>(<span class="keyword">$ch</span>);
+
+<span class="keyword">$data</span> = <span class="function">json_decode</span>(<span class="keyword">$response</span>, <span class="keyword">true</span>);
+<span class="keyword">if</span> (<span class="keyword">$data</span>[<span class="string">'success'</span>]) {
+    <span class="function">echo</span> <span class="string">"Contact Name: " . $data['data']['name'] . "\n"</span>;
+}</code>
+                        </div>
+                    </div>
+                    <div id="contact-get-python" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="keyword">import</span> requests
+
+<span class="variable">api_key</span> = <span class="string">'YOUR_API_KEY'</span>
+<span class="variable">session</span> = <span class="string">'default'</span>
+<span class="variable">contact_id</span> = <span class="string">'123123123@c.us'</span>
+<span class="variable">url</span> = <span class="string">f'https://app.wacloud.id/api/v1/devices/{session}/contacts/{contact_id}'</span>
+
+<span class="variable">headers</span> = {
+    <span class="string">'X-Api-Key'</span>: <span class="variable">api_key</span>,
+    <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>
+}
+
+<span class="variable">response</span> = requests.<span class="function">get</span>(<span class="variable">url</span>, <span class="variable">headers</span>=<span class="variable">headers</span>)
+
+<span class="keyword">if</span> <span class="variable">response</span>.status_code == <span class="number">200</span>:
+    <span class="variable">data</span> = <span class="variable">response</span>.<span class="function">json</span>()
+    <span class="keyword">if</span> <span class="variable">data</span>[<span class="string">'success'</span>]:
+        <span class="function">print</span>(<span class="function">f</span>(<span class="string">"Contact Name: {data['data']['name']}"</span>))</code>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Memperbarui Kontak</h3>
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-put">PUT</span>
+                        <span class="endpoint-url">/devices/{session}/contacts/{chatId}</span>
+                    </div>
+                    <p class="text-muted mb-3">Memperbarui informasi kontak di buku alamat telepon (dan di WhatsApp).</p>
+                </div>
+                
+                <p class="mb-2"><strong>Request Body:</strong></p>
+                <div class="code-block mb-3">
+<code>{
+  <span class="string">"firstName"</span>: <span class="string">"John"</span>,
+  <span class="string">"lastName"</span>: <span class="string">"Doe"</span>
+}</code>
+                </div>
+                
+                <div class="code-tabs">
+                    <div class="code-tabs-header">
+                        <button class="code-tab active" onclick="switchCodeTab(this, 'contact-update-curl')">cURL</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'contact-update-php')">PHP</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'contact-update-python')">Python</button>
+                    </div>
+                    <div id="contact-update-curl" class="code-tab-content active">
+                        <div class="code-block">
+<code>curl -X PUT "https://app.wacloud.id/api/v1/devices/default/contacts/123123123@c.us" \
+  -H "X-Api-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "John",
+    "lastName": "Doe"
+  }'</code>
+                        </div>
+                    </div>
+                    <div id="contact-update-php" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="keyword">$apiKey</span> = <span class="string">'YOUR_API_KEY'</span>;
+<span class="keyword">$session</span> = <span class="string">'default'</span>;
+<span class="keyword">$chatId</span> = <span class="string">'123123123@c.us'</span>;
+<span class="keyword">$url</span> = <span class="string">'https://app.wacloud.id/api/v1/devices/' . $session . '/contacts/' . $chatId</span>;
+
+<span class="keyword">$data</span> = [
+    <span class="string">'firstName'</span> => <span class="string">'John'</span>,
+    <span class="string">'lastName'</span> => <span class="string">'Doe'</span>
+];
+
+<span class="keyword">$ch</span> = <span class="function">curl_init</span>(<span class="keyword">$url</span>);
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_RETURNTRANSFER, <span class="keyword">true</span>);
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_CUSTOMREQUEST, <span class="string">'PUT'</span>);
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_POSTFIELDS, <span class="function">json_encode</span>(<span class="keyword">$data</span>));
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_HTTPHEADER, [
+    <span class="string">'X-Api-Key: ' . $apiKey</span>,
+    <span class="string">'Content-Type: application/json'</span>
+]);
+
+<span class="keyword">$response</span> = <span class="function">curl_exec</span>(<span class="keyword">$ch</span>);
+<span class="function">curl_close</span>(<span class="keyword">$ch</span>);
+
+<span class="keyword">$result</span> = <span class="function">json_decode</span>(<span class="keyword">$response</span>, <span class="keyword">true</span>);
+<span class="keyword">if</span> (<span class="keyword">$result</span>[<span class="string">'success'</span>]) {
+    <span class="function">echo</span> <span class="string">"Contact updated successfully\n"</span>;
+}</code>
+                        </div>
+                    </div>
+                    <div id="contact-update-python" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="keyword">import</span> requests
+
+<span class="variable">api_key</span> = <span class="string">'YOUR_API_KEY'</span>
+<span class="variable">session</span> = <span class="string">'default'</span>
+<span class="variable">chat_id</span> = <span class="string">'123123123@c.us'</span>
+<span class="variable">url</span> = <span class="string">f'https://app.wacloud.id/api/v1/devices/{session}/contacts/{chat_id}'</span>
+
+<span class="variable">headers</span> = {
+    <span class="string">'X-Api-Key'</span>: <span class="variable">api_key</span>,
+    <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>
+}
+
+<span class="variable">data</span> = {
+    <span class="string">'firstName'</span>: <span class="string">'John'</span>,
+    <span class="string">'lastName'</span>: <span class="string">'Doe'</span>
+}
+
+<span class="variable">response</span> = requests.<span class="function">put</span>(<span class="variable">url</span>, <span class="variable">headers</span>=<span class="variable">headers</span>, <span class="variable">json</span>=<span class="variable">data</span>)
+
+<span class="keyword">if</span> <span class="variable">response</span>.status_code == <span class="number">200</span>:
+    <span class="variable">result</span> = <span class="variable">response</span>.<span class="function">json</span>()
+    <span class="keyword">if</span> <span class="variable">result</span>[<span class="string">'success'</span>]:
+        <span class="function">print</span>(<span class="string">"Contact updated successfully"</span>)</code>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Cek Nomor Terdaftar</h3>
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{session}/contacts/check-exists</span>
+                    </div>
+                    <p class="text-muted mb-3">Memeriksa apakah nomor telepon terdaftar di WhatsApp (bahkan jika nomor tidak ada di daftar kontak Anda).</p>
+                </div>
+                
+                <p class="mb-2"><strong>Query Parameters:</strong></p>
+                <ul class="mb-3">
+                    <li><code>phone</code> (required) - Nomor telepon yang akan dicek (contoh: 11231231231)</li>
+                </ul>
+                
+                <div class="code-tabs">
+                    <div class="code-tabs-header">
+                        <button class="code-tab active" onclick="switchCodeTab(this, 'check-exists-curl')">cURL</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'check-exists-php')">PHP</button>
+                        <button class="code-tab" onclick="switchCodeTab(this, 'check-exists-python')">Python</button>
+                    </div>
+                    <div id="check-exists-curl" class="code-tab-content active">
+                        <div class="code-block">
+<code>curl -X GET "https://app.wacloud.id/api/v1/devices/default/contacts/check-exists?phone=11231231231" \
+  -H "X-Api-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json"</code>
+                        </div>
+                    </div>
+                    <div id="check-exists-php" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="keyword">$apiKey</span> = <span class="string">'YOUR_API_KEY'</span>;
+<span class="keyword">$session</span> = <span class="string">'default'</span>;
+<span class="keyword">$phone</span> = <span class="string">'11231231231'</span>;
+<span class="keyword">$url</span> = <span class="string">'https://app.wacloud.id/api/v1/devices/' . $session . '/contacts/check-exists?phone=' . $phone</span>;
+
+<span class="keyword">$ch</span> = <span class="function">curl_init</span>(<span class="keyword">$url</span>);
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_RETURNTRANSFER, <span class="keyword">true</span>);
+<span class="function">curl_setopt</span>(<span class="keyword">$ch</span>, CURLOPT_HTTPHEADER, [
+    <span class="string">'X-Api-Key: ' . $apiKey</span>,
+    <span class="string">'Content-Type: application/json'</span>
+]);
+
+<span class="keyword">$response</span> = <span class="function">curl_exec</span>(<span class="keyword">$ch</span>);
+<span class="function">curl_close</span>(<span class="keyword">$ch</span>);
+
+<span class="keyword">$data</span> = <span class="function">json_decode</span>(<span class="keyword">$response</span>, <span class="keyword">true</span>);
+<span class="keyword">if</span> (<span class="keyword">$data</span>[<span class="string">'success'</span>]) {
+    <span class="keyword">if</span> (<span class="keyword">$data</span>[<span class="string">'data'</span>][<span class="string">'numberExists'</span>]) {
+        <span class="function">echo</span> <span class="string">"Number exists: " . $data['data']['chatId'] . "\n"</span>;
+    } <span class="keyword">else</span> {
+        <span class="function">echo</span> <span class="string">"Number does not exist\n"</span>;
+    }
+}</code>
+                        </div>
+                    </div>
+                    <div id="check-exists-python" class="code-tab-content">
+                        <div class="code-block">
+<code><span class="keyword">import</span> requests
+
+<span class="variable">api_key</span> = <span class="string">'YOUR_API_KEY'</span>
+<span class="variable">session</span> = <span class="string">'default'</span>
+<span class="variable">phone</span> = <span class="string">'11231231231'</span>
+<span class="variable">url</span> = <span class="string">f'https://app.wacloud.id/api/v1/devices/{session}/contacts/check-exists'</span>
+
+<span class="variable">headers</span> = {
+    <span class="string">'X-Api-Key'</span>: <span class="variable">api_key</span>,
+    <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>
+}
+
+<span class="variable">params</span> = {
+    <span class="string">'phone'</span>: <span class="variable">phone</span>
+}
+
+<span class="variable">response</span> = requests.<span class="function">get</span>(<span class="variable">url</span>, <span class="variable">headers</span>=<span class="variable">headers</span>, <span class="variable">params</span>=<span class="variable">params</span>)
+
+<span class="keyword">if</span> <span class="variable">response</span>.status_code == <span class="number">200</span>:
+    <span class="variable">data</span> = <span class="variable">response</span>.<span class="function">json</span>()
+    <span class="keyword">if</span> <span class="variable">data</span>[<span class="string">'success'</span>]:
+        <span class="keyword">if</span> <span class="variable">data</span>[<span class="string">'data'</span>][<span class="string">'numberExists'</span>]:
+            <span class="function">print</span>(<span class="function">f</span>(<span class="string">"Number exists: {data['data']['chatId']}"</span>))
+        <span class="keyword">else</span>:
+            <span class="function">print</span>(<span class="string">"Number does not exist"</span>)</code>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Mendapatkan Foto Profil Kontak</h3>
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{session}/contacts/{contactId}/profile-picture</span>
+                    </div>
+                    <p class="text-muted mb-3">Mendapatkan foto profil kontak. Secara default, gambar di-cache selama 24 jam. Gunakan parameter refresh=true untuk memaksa refresh.</p>
+                </div>
+                
+                <p class="mb-2"><strong>Query Parameters:</strong></p>
+                <ul class="mb-3">
+                    <li><code>refresh</code> (optional, default: false) - Paksa refresh gambar</li>
+                </ul>
+                
+                <div class="code-block">
+<code>curl -X GET "https://app.wacloud.id/api/v1/devices/default/contacts/123123123@c.us/profile-picture?refresh=false" \
+  -H "X-Api-Key: YOUR_API_KEY"</code>
+                </div>
+
+                <h3>Blokir dan Unblock Kontak</h3>
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-post">POST</span>
+                        <span class="endpoint-url">/devices/{session}/contacts/{contactId}/block</span>
+                    </div>
+                    <p class="text-muted mb-2">Memblokir kontak.</p>
+                </div>
+                
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-post">POST</span>
+                        <span class="endpoint-url">/devices/{session}/contacts/{contactId}/unblock</span>
+                    </div>
+                    <p class="text-muted mb-0">Membuka blokir kontak.</p>
+                </div>
+
+                <h3>LIDs (Linked IDs)</h3>
+                <p>WhatsApp menggunakan identifier Linked ID (lid) untuk menyembunyikan nomor telepon pengguna dari grup publik. Gunakan API di bawah ini untuk memetakan LID ke nomor telepon.</p>
+                
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{session}/lids</span>
+                    </div>
+                    <p class="text-muted mb-2">Mendapatkan semua mapping LID ke nomor telepon untuk session.</p>
+                </div>
+                
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{session}/lids/count</span>
+                    </div>
+                    <p class="text-muted mb-2">Mendapatkan jumlah mapping LID yang diketahui untuk session.</p>
+                </div>
+                
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{session}/lids/{lid}</span>
+                    </div>
+                    <p class="text-muted mb-2">Mendapatkan nomor telepon yang terkait dengan LID tertentu.</p>
+                </div>
+                
+                <div class="endpoint-item">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="endpoint-badge badge-get">GET</span>
+                        <span class="endpoint-url">/devices/{session}/lids/phone/{phoneNumber}</span>
+                    </div>
+                    <p class="text-muted mb-0">Mendapatkan LID untuk nomor telepon tertentu.</p>
+                </div>
+
+                <div class="alert alert-info mt-4">
+                    <h5 class="mb-2"><i class="fas fa-info-circle me-2"></i>Tips</h5>
+                    <ul class="mb-0">
+                        <li>Contact ID bisa berupa nomor telepon (123123123) atau chat ID (123123@c.us atau 123123@lid)</li>
+                        <li>Gunakan check-exists sebelum mengirim pesan ke nomor baru untuk mendapatkan chatId yang benar</li>
+                        <li>Untuk nomor telepon Brasil, selalu gunakan check-exists karena format nomor yang berbeda</li>
+                        <li>Foto profil di-cache selama 24 jam untuk menghindari rate limit</li>
+                        <li>LIDs digunakan untuk privasi di grup publik - gunakan API LIDs untuk mapping</li>
+                    </ul>
+                </div>
+            </div>
+
             <!-- CTA -->
             <div class="alert alert-success mt-5">
                 <h5 class="mb-2"><i class="fas fa-rocket me-2"></i>Siap untuk Memulai?</h5>
@@ -3727,8 +4338,8 @@ sendOTP();</code>
             <div class="row">
                 <div class="col-lg-4 col-md-6 mb-4">
                     <h5 class="mb-3">
-                        <i class="fab fa-whatsapp text-success me-2"></i>
-                        WAHA Gateway
+                        <img src="logo-wacloud.png" alt="WACloud" height="30" class="me-2" style="vertical-align: middle;">
+                        WACloud
                     </h5>
                     <p class="text-muted mb-4">Platform WhatsApp Gateway API yang powerful untuk developer. Bangun aplikasi luar biasa dengan integrasi WhatsApp.</p>
                 </div>
@@ -3766,7 +4377,7 @@ sendOTP();</code>
             <hr class="bg-secondary">
             <div class="row">
                 <div class="col-12 text-center">
-                    <p class="text-muted mb-0">&copy; 2025 WAHA Gateway. All rights reserved.</p>
+                    <p class="text-muted mb-0">&copy; 2025 WACloud. All rights reserved.</p>
                 </div>
             </div>
         </div>

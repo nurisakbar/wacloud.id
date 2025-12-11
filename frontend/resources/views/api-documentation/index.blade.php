@@ -290,6 +290,47 @@
                 </div>
             </div>
 
+                <!-- Contacts Module -->
+                <div class="col-md-6 mb-4">
+                    <div class="api-card" onclick="window.location.href='{{ route('api-docs.detail', 'contacts') }}'">
+                        <div class="api-card-header" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);">
+                            <i class="fas fa-address-book"></i>
+                            <h3 class="api-card-title mb-0">{{ __('Contacts') }}</h3>
+                        </div>
+                        <div class="api-card-body">
+                            <p class="api-card-description">
+                                {{ __('Kelola kontak WhatsApp. Dapatkan daftar kontak, cek nomor terdaftar, update kontak, dan kelola LIDs (Linked IDs).') }}
+                            </p>
+                            <div class="api-card-endpoints">
+                                <span class="endpoint-badge">
+                                    <span class="endpoint-method method-get">GET</span>
+                                    <span class="endpoint-url">/devices/{id}/contacts</span>
+                                </span>
+                                <span class="endpoint-badge">
+                                    <span class="endpoint-method method-get">GET</span>
+                                    <span class="endpoint-url">/devices/{id}/contacts/{contactId}</span>
+                                </span>
+                                <span class="endpoint-badge">
+                                    <span class="endpoint-method method-put">PUT</span>
+                                    <span class="endpoint-url">/devices/{id}/contacts/{chatId}</span>
+                                </span>
+                                <span class="endpoint-badge">
+                                    <span class="endpoint-method method-get">GET</span>
+                                    <span class="endpoint-url">/devices/{id}/contacts/check-exists</span>
+                                </span>
+                                <span class="endpoint-badge">
+                                    <span class="endpoint-method method-post">POST</span>
+                                    <span class="endpoint-url">/devices/{id}/contacts/{contactId}/block</span>
+                                </span>
+                            </div>
+                            <button class="btn btn-primary btn-sm view-detail-btn">
+                                <i class="fas fa-arrow-right"></i> {{ __('Lihat Detail') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
                 <!-- Health Check Module -->
                 <div class="col-md-6 mb-4">
                     <div class="api-card" onclick="window.location.href='{{ route('api-docs.detail', 'health') }}'">

@@ -1388,12 +1388,29 @@ class WahaService
 
     /**
      * Get contacts for a session.
+     * @deprecated Use getAllContacts instead
      */
     public function getContacts(string $sessionId): array
     {
+        return $this->getAllContacts($sessionId);
+    }
+
+    /**
+     * Get all contacts for a session with pagination.
+     */
+    public function getAllContacts(string $sessionId, int $limit = 100, int $offset = 0, string $sortBy = 'id', string $sortOrder = 'asc'): array
+    {
         try {
+            $params = [
+                'session' => $sessionId,
+                'limit' => $limit,
+                'offset' => $offset,
+                'sortBy' => $sortBy,
+                'sortOrder' => $sortOrder,
+            ];
+
             $response = $this->httpClient()
-                ->get("{$this->baseUrl}/api/{$sessionId}/contacts");
+                ->get("{$this->baseUrl}/api/contacts/all", $params);
 
             if ($response->successful()) {
                 return [
@@ -1407,7 +1424,438 @@ class WahaService
                 'error' => $response->json()['message'] ?? 'Failed to get contacts',
             ];
         } catch (\Exception $e) {
-            Log::error('WAHA get contacts error: ' . $e->getMessage());
+            Log::error('WAHA get all contacts error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get a single contact by ID.
+     */
+    public function getContact(string $sessionId, string $contactId): array
+    {
+        try {
+            $params = [
+                'contactId' => $contactId,
+                'session' => $sessionId,
+            ];
+
+            $response = $this->httpClient()
+                ->get("{$this->baseUrl}/api/contacts", $params);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to get contact',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA get contact error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Update contact information.
+     */
+    public function updateContact(string $sessionId, string $chatId, string $firstName, ?string $lastName = null): array
+    {
+        try {
+            $payload = [
+                'firstName' => $firstName,
+            ];
+
+            if ($lastName !== null) {
+                $payload['lastName'] = $lastName;
+            }
+
+            $response = $this->httpClient()
+                ->put("{$this->baseUrl}/api/{$sessionId}/contacts/{$chatId}", $payload);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to update contact',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA update contact error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Check if phone number exists in WhatsApp.
+     */
+    public function checkPhoneExists(string $sessionId, string $phone): array
+    {
+        try {
+            $params = [
+                'phone' => $phone,
+                'session' => $sessionId,
+            ];
+
+            Log::info('WAHA: Checking phone exists', [
+                'session' => $sessionId,
+                'phone' => $phone,
+                'url' => "{$this->baseUrl}/api/contacts/check-exists",
+            ]);
+
+            $response = $this->httpClient()
+                ->get("{$this->baseUrl}/api/contacts/check-exists", $params);
+
+            Log::info('WAHA: check-exists response', [
+                'status' => $response->status(),
+                'successful' => $response->successful(),
+                'body' => $response->body(),
+            ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('WAHA: check-exists success', [
+                    'response_data' => $responseData,
+                ]);
+                
+                return [
+                    'success' => true,
+                    'data' => $responseData,
+                ];
+            }
+
+            // Handle different error formats
+            $errorData = null;
+            $errorMessage = 'Failed to check phone number';
+            
+            try {
+                $errorData = $response->json();
+            } catch (\Exception $jsonException) {
+                Log::warning('WAHA: Failed to parse error response as JSON', [
+                    'body' => $response->body(),
+                    'json_error' => $jsonException->getMessage(),
+                ]);
+                $errorMessage = 'Invalid response from WAHA: ' . $response->body();
+            }
+            
+            if ($errorData) {
+                // Try to extract error message from various possible formats
+                if (isset($errorData['message'])) {
+                    $errorMessage = is_array($errorData['message']) 
+                        ? implode(', ', $errorData['message']) 
+                        : $errorData['message'];
+                } elseif (isset($errorData['error'])) {
+                    $errorMessage = is_array($errorData['error']) 
+                        ? implode(', ', $errorData['error']) 
+                        : $errorData['error'];
+                } elseif (isset($errorData['exception']['message'])) {
+                    $errorMessage = $errorData['exception']['message'];
+                } elseif (isset($errorData['exception']['error'])) {
+                    $errorMessage = $errorData['exception']['error'];
+                }
+            }
+
+            Log::error('WAHA: check-exists failed', [
+                'status' => $response->status(),
+                'error' => $errorMessage,
+                'error_data' => $errorData,
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $errorMessage,
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA check phone exists error: ' . $e->getMessage(), [
+                'session' => $sessionId,
+                'phone' => $phone,
+                'exception' => $e->getTraceAsString(),
+            ]);
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get contact "about" information.
+     */
+    public function getContactAbout(string $sessionId, string $contactId): array
+    {
+        try {
+            $params = [
+                'contactId' => $contactId,
+                'session' => $sessionId,
+            ];
+
+            $response = $this->httpClient()
+                ->get("{$this->baseUrl}/api/contacts/about", $params);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to get contact about',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA get contact about error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get contact profile picture.
+     */
+    public function getContactProfilePicture(string $sessionId, string $contactId, bool $refresh = false): array
+    {
+        try {
+            $params = [
+                'contactId' => $contactId,
+                'session' => $sessionId,
+            ];
+
+            if ($refresh) {
+                $params['refresh'] = 'True';
+            }
+
+            $response = $this->httpClient()
+                ->get("{$this->baseUrl}/api/contacts/profile-picture", $params);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to get profile picture',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA get profile picture error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Block a contact.
+     */
+    public function blockContact(string $sessionId, string $contactId): array
+    {
+        try {
+            $payload = [
+                'contactId' => $contactId,
+                'session' => $sessionId,
+            ];
+
+            $response = $this->httpClient()
+                ->post("{$this->baseUrl}/api/contacts/block", $payload);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to block contact',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA block contact error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Unblock a contact.
+     */
+    public function unblockContact(string $sessionId, string $contactId): array
+    {
+        try {
+            $payload = [
+                'contactId' => $contactId,
+                'session' => $sessionId,
+            ];
+
+            $response = $this->httpClient()
+                ->post("{$this->baseUrl}/api/contacts/unblock", $payload);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to unblock contact',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA unblock contact error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get all known LIDs (Linked IDs) for a session.
+     */
+    public function getAllLids(string $sessionId, int $limit = 100, int $offset = 0): array
+    {
+        try {
+            $params = [
+                'limit' => $limit,
+                'offset' => $offset,
+            ];
+
+            $response = $this->httpClient()
+                ->get("{$this->baseUrl}/api/{$sessionId}/lids", $params);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to get LIDs',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA get all LIDs error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get count of LIDs for a session.
+     */
+    public function getLidsCount(string $sessionId): array
+    {
+        try {
+            $response = $this->httpClient()
+                ->get("{$this->baseUrl}/api/{$sessionId}/lids/count");
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to get LIDs count',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA get LIDs count error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get phone number by LID.
+     */
+    public function getPhoneByLid(string $sessionId, string $lid): array
+    {
+        try {
+            // Escape @ in lid
+            $lidEscaped = str_replace('@', '%40', $lid);
+
+            $response = $this->httpClient()
+                ->get("{$this->baseUrl}/api/{$sessionId}/lids/{$lidEscaped}");
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to get phone by LID',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA get phone by LID error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get LID by phone number.
+     */
+    public function getLidByPhone(string $sessionId, string $phoneNumber): array
+    {
+        try {
+            // Escape @ in phoneNumber
+            $phoneEscaped = str_replace('@', '%40', $phoneNumber);
+
+            $response = $this->httpClient()
+                ->get("{$this->baseUrl}/api/{$sessionId}/lids/pn/{$phoneEscaped}");
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json(),
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['message'] ?? 'Failed to get LID by phone',
+            ];
+        } catch (\Exception $e) {
+            Log::error('WAHA get LID by phone error: ' . $e->getMessage());
             return [
                 'success' => false,
                 'error' => 'Connection error: ' . $e->getMessage(),

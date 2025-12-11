@@ -33,7 +33,7 @@ class ApiDocumentationController extends Controller
         $apiKeys = $user->apiKeys()->where('is_active', true)->get();
         $baseUrl = config('app.url', 'http://localhost:8000');
         
-        $allowedModules = ['devices', 'messages', 'templates', 'account', 'otp', 'health'];
+        $allowedModules = ['devices', 'messages', 'templates', 'account', 'otp', 'health', 'contacts'];
         
         if (!in_array($module, $allowedModules)) {
             abort(404);

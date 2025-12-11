@@ -68,6 +68,23 @@ Route::middleware(['api.key'])->prefix('v1')->group(function () {
     Route::post('/messages/otp', [App\Http\Controllers\Api\OtpApiController::class, 'send']);
     Route::post('/messages/verify-otp', [App\Http\Controllers\Api\OtpApiController::class, 'verify']);
     Route::get('/messages/otp/{otp}/status', [App\Http\Controllers\Api\OtpApiController::class, 'status']);
+    
+    // Contacts
+    Route::get('/devices/{session}/contacts', [App\Http\Controllers\Api\ContactApiController::class, 'index']);
+    // Specific routes must come before parameterized routes to avoid route conflicts
+    Route::get('/devices/{session}/contacts/check-exists', [App\Http\Controllers\Api\ContactApiController::class, 'checkExists']);
+    Route::get('/devices/{session}/contacts/{contactId}', [App\Http\Controllers\Api\ContactApiController::class, 'show']);
+    Route::put('/devices/{session}/contacts/{chatId}', [App\Http\Controllers\Api\ContactApiController::class, 'update']);
+    Route::get('/devices/{session}/contacts/{contactId}/about', [App\Http\Controllers\Api\ContactApiController::class, 'about']);
+    Route::get('/devices/{session}/contacts/{contactId}/profile-picture', [App\Http\Controllers\Api\ContactApiController::class, 'profilePicture']);
+    Route::post('/devices/{session}/contacts/{contactId}/block', [App\Http\Controllers\Api\ContactApiController::class, 'block']);
+    Route::post('/devices/{session}/contacts/{contactId}/unblock', [App\Http\Controllers\Api\ContactApiController::class, 'unblock']);
+    
+    // LIDs (Linked IDs)
+    Route::get('/devices/{session}/lids', [App\Http\Controllers\Api\ContactApiController::class, 'lids']);
+    Route::get('/devices/{session}/lids/count', [App\Http\Controllers\Api\ContactApiController::class, 'lidsCount']);
+    Route::get('/devices/{session}/lids/{lid}', [App\Http\Controllers\Api\ContactApiController::class, 'phoneByLid']);
+    Route::get('/devices/{session}/lids/phone/{phoneNumber}', [App\Http\Controllers\Api\ContactApiController::class, 'lidByPhone']);
 });
 
 
