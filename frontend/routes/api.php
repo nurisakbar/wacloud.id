@@ -88,3 +88,11 @@ Route::middleware(['api.key'])->prefix('v1')->group(function () {
 });
 
 
+Route::post('test-terima-lab',function(){
+    $request = request();
+    $data = $request->all();
+    Log::info($data);
+    return response()->json(['success' => true, 'message' => 'Test route working']);
+});
+
+

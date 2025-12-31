@@ -102,5 +102,81 @@ class XenditService
         $expectedSignature = hash_hmac('sha256', $payload, $this->secretKey);
         return hash_equals($expectedSignature, $signature);
     }
+
+    /**
+     * Create payment link (alternative to invoice)
+     */
+    public function createPaymentLink(array $params): array
+    {
+        try {
+            $paymentLinkParams = [
+                'reference_id' => $params['external_id'],
+                'amount' => $params['amount'],
+                'currency' => 'IDR',
+                'description' => $params['description'],
+                'success_redirect_url' => $params['success_url'] ?? route('quota.index'),
+                'failure_redirect_url' => $params['failure_url'] ?? route('quota.index'),
+            ];
+
+            // Add customer info if provided
+            if (isset($params['customer'])) {
+                $paymentLinkParams['customer'] = $params['customer'];
+            }
+
+            // Add items if provided
+            if (isset($params['items'])) {
+                $paymentLinkParams['items'] = $params['items'];
+            }
+
+            // Use Xendit Payment Links API
+            $paymentLink = \Xendit\PaymentLinks::create($paymentLinkParams);
+
+            Log::info('Xendit payment link created', [
+                'reference_id' => $params['external_id'],
+                'payment_link_id' => $paymentLink['id'],
+                'amount' => $params['amount'],
+            ]);
+
+            return [
+                'success' => true,
+                'payment_link' => $paymentLink,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Xendit payment link creation failed', [
+                'error' => $e->getMessage(),
+                'params' => $params,
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get payment link by ID
+     */
+    public function getPaymentLink(string $paymentLinkId): array
+    {
+        try {
+            $paymentLink = \Xendit\PaymentLinks::retrieve($paymentLinkId);
+
+            return [
+                'success' => true,
+                'payment_link' => $paymentLink,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Xendit get payment link failed', [
+                'payment_link_id' => $paymentLinkId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
 }
 

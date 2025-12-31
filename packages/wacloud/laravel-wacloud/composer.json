@@ -1,0 +1,70 @@
+{
+    "name": "wacloud/laravel-wacloud",
+    "description": "Laravel package untuk integrasi WACloud WhatsApp Gateway API",
+    "keywords": [
+        "wacloud",
+        "whatsapp",
+        "whatsapp-api",
+        "whatsapp-gateway",
+        "laravel",
+        "laravel-package",
+        "messaging",
+        "notification",
+        "whatsapp-sdk",
+        "php"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://wacloud.id",
+    "support": {
+        "issues": "https://github.com/wacloud/laravel-wacloud/issues",
+        "source": "https://github.com/wacloud/laravel-wacloud",
+        "docs": "https://wacloud.id/docs.html",
+        "email": "support@wacloud.id"
+    },
+    "authors": [
+        {
+            "name": "WACloud",
+            "email": "support@wacloud.id",
+            "homepage": "https://wacloud.id",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^10.0|^11.0",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0",
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "WACloud\\LaravelWACloud\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "WACloud\\LaravelWACloud\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "WACloud\\LaravelWACloud\\WACloudServiceProvider"
+            ],
+            "aliases": {
+                "WACloud": "WACloud\\LaravelWACloud\\Facades\\WACloud"
+            }
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "optimize-autoloader": true
+    }
+}
+

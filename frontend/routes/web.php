@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 Auth::routes();
@@ -127,3 +128,4 @@ Route::post('/webhook/receive/{session}', [App\Http\Controllers\WebhookControlle
 
 // Xendit webhook (public endpoint)
 Route::post('/webhook/xendit', [App\Http\Controllers\QuotaController::class, 'webhook'])->name('webhook.xendit');
+
