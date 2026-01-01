@@ -2,18 +2,26 @@
 
 namespace App\Services;
 
-use Xendit\Invoice;
-use Xendit\Xendit;
+use Xendit\Configuration;
+use Xendit\Invoice\InvoiceApi;
+use Xendit\Invoice\CreateInvoiceRequest;
+use Xendit\Invoice\Invoice as InvoiceModel;
 use Illuminate\Support\Facades\Log;
 
 class XenditService
 {
     protected string $secretKey;
+    protected InvoiceApi $invoiceApi;
 
     public function __construct()
     {
         $this->secretKey = config('services.xendit.secret_key', env('XENDIT_SECRET_KEY'));
-        Xendit::setApiKey($this->secretKey);
+        
+        // Set API key using Configuration
+        Configuration::setXenditKey($this->secretKey);
+        
+        // Initialize Invoice API
+        $this->invoiceApi = new InvoiceApi();
     }
 
     /**
@@ -22,7 +30,8 @@ class XenditService
     public function createInvoice(array $params): array
     {
         try {
-            $invoiceParams = [
+            // Prepare invoice request data
+            $requestData = [
                 'external_id' => $params['external_id'],
                 'amount' => $params['amount'],
                 'payer_email' => $params['payer_email'],
@@ -34,29 +43,45 @@ class XenditService
 
             // Add customer info if provided
             if (isset($params['customer'])) {
-                $invoiceParams['customer'] = $params['customer'];
+                $requestData['customer'] = $params['customer'];
             }
 
             // Add items if provided
             if (isset($params['items'])) {
-                $invoiceParams['items'] = $params['items'];
+                $requestData['items'] = $params['items'];
             }
 
-            $invoice = Invoice::create($invoiceParams);
+            // Create invoice request object
+            $createInvoiceRequest = new CreateInvoiceRequest($requestData);
+
+            // Create invoice using API
+            $invoice = $this->invoiceApi->createInvoice($createInvoiceRequest);
 
             Log::info('Xendit invoice created', [
                 'external_id' => $params['external_id'],
-                'invoice_id' => $invoice['id'],
+                'invoice_id' => $invoice->getId(),
                 'amount' => $params['amount'],
             ]);
 
+            // Convert to array format for backward compatibility
+            $invoiceArray = [
+                'id' => $invoice->getId(),
+                'external_id' => $invoice->getExternalId(),
+                'amount' => $invoice->getAmount(),
+                'status' => $invoice->getStatus(),
+                'invoice_url' => $invoice->getInvoiceUrl(),
+                'payer_email' => $invoice->getPayerEmail(),
+                'description' => $invoice->getDescription(),
+            ];
+
             return [
                 'success' => true,
-                'invoice' => $invoice,
+                'invoice' => $invoiceArray,
             ];
         } catch (\Exception $e) {
             Log::error('Xendit invoice creation failed', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'params' => $params,
             ]);
 
@@ -73,16 +98,28 @@ class XenditService
     public function getInvoice(string $invoiceId): array
     {
         try {
-            $invoice = Invoice::retrieve($invoiceId);
+            $invoice = $this->invoiceApi->getInvoiceById($invoiceId);
+
+            // Convert to array format for backward compatibility
+            $invoiceArray = [
+                'id' => $invoice->getId(),
+                'external_id' => $invoice->getExternalId(),
+                'amount' => $invoice->getAmount(),
+                'status' => $invoice->getStatus(),
+                'invoice_url' => $invoice->getInvoiceUrl(),
+                'payer_email' => $invoice->getPayerEmail(),
+                'description' => $invoice->getDescription(),
+            ];
 
             return [
                 'success' => true,
-                'invoice' => $invoice,
+                'invoice' => $invoiceArray,
             ];
         } catch (\Exception $e) {
             Log::error('Xendit get invoice failed', [
                 'invoice_id' => $invoiceId,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
@@ -105,78 +142,23 @@ class XenditService
 
     /**
      * Create payment link (alternative to invoice)
+     * Note: Payment Links API may not be available in SDK v7.0.0
+     * Using invoice as alternative
      */
     public function createPaymentLink(array $params): array
     {
-        try {
-            $paymentLinkParams = [
-                'reference_id' => $params['external_id'],
-                'amount' => $params['amount'],
-                'currency' => 'IDR',
-                'description' => $params['description'],
-                'success_redirect_url' => $params['success_url'] ?? route('quota.index'),
-                'failure_redirect_url' => $params['failure_url'] ?? route('quota.index'),
-            ];
-
-            // Add customer info if provided
-            if (isset($params['customer'])) {
-                $paymentLinkParams['customer'] = $params['customer'];
-            }
-
-            // Add items if provided
-            if (isset($params['items'])) {
-                $paymentLinkParams['items'] = $params['items'];
-            }
-
-            // Use Xendit Payment Links API
-            $paymentLink = \Xendit\PaymentLinks::create($paymentLinkParams);
-
-            Log::info('Xendit payment link created', [
-                'reference_id' => $params['external_id'],
-                'payment_link_id' => $paymentLink['id'],
-                'amount' => $params['amount'],
-            ]);
-
-            return [
-                'success' => true,
-                'payment_link' => $paymentLink,
-            ];
-        } catch (\Exception $e) {
-            Log::error('Xendit payment link creation failed', [
-                'error' => $e->getMessage(),
-                'params' => $params,
-            ]);
-
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        // For now, use invoice creation as alternative
+        return $this->createInvoice($params);
     }
 
     /**
      * Get payment link by ID
+     * Note: Payment Links API may not be available in SDK v7.0.0
      */
     public function getPaymentLink(string $paymentLinkId): array
     {
-        try {
-            $paymentLink = \Xendit\PaymentLinks::retrieve($paymentLinkId);
-
-            return [
-                'success' => true,
-                'payment_link' => $paymentLink,
-            ];
-        } catch (\Exception $e) {
-            Log::error('Xendit get payment link failed', [
-                'payment_link_id' => $paymentLinkId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-            ];
-        }
+        // For now, treat as invoice ID
+        return $this->getInvoice($paymentLinkId);
     }
 }
 

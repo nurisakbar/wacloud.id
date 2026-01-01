@@ -571,31 +571,6 @@ class MessageController extends Controller
                     return '<strong>To:</strong> ' . ($message->to_number ?? 'N/A');
                 }
             })
-            ->addColumn('content_preview', function ($message) {
-                if ($message->message_type === 'text') {
-                    return \Str::limit($message->content, 50);
-                } elseif ($message->message_type === 'image') {
-                    $html = '<i class="fas fa-image"></i> Image';
-                    if ($message->caption) {
-                        $html .= '<br><small>' . \Str::limit($message->caption, 30) . '</small>';
-                    }
-                    return $html;
-                } elseif ($message->message_type === 'video') {
-                    $html = '<i class="fas fa-video"></i> Video';
-                    if ($message->caption) {
-                        $html .= '<br><small>' . \Str::limit($message->caption, 30) . '</small>';
-                    }
-                    return $html;
-                } elseif ($message->message_type === 'document') {
-                    return '<i class="fas fa-file"></i> Document';
-                } elseif ($message->message_type === 'poll') {
-                    return '<i class="fas fa-poll"></i> Poll';
-                } elseif ($message->message_type === 'button') {
-                    return '<i class="fas fa-mouse-pointer"></i> Button';
-                } else {
-                    return '<i class="fas fa-file"></i> ' . ucfirst($message->message_type);
-                }
-            })
             ->addColumn('status_badge', function ($message) {
                 $status = $message->status;
                 $badgeClass = 'bg-secondary';
@@ -643,7 +618,7 @@ class MessageController extends Controller
                     <i class="fas fa-eye"></i>
                 </a>';
             })
-            ->rawColumns(['type_badge', 'from_to', 'content_preview', 'status_badge', 'actions'])
+            ->rawColumns(['type_badge', 'from_to', 'status_badge', 'actions'])
             ->make(true);
         } catch (\Exception $e) {
             \Log::error('DataTables error: ' . $e->getMessage(), [

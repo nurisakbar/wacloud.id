@@ -169,6 +169,17 @@ class QuotaController extends Controller
                     'invoice_id' => $invoice['id'],
                 ]);
 
+                // If AJAX request, return JSON
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'purchase_id' => $purchase->id,
+                        'redirect' => $invoice['invoice_url'],
+                        'invoice_url' => $invoice['invoice_url'],
+                        'status_page' => route('payment.status', $purchase->id),
+                    ]);
+                }
+
                 // Redirect to Xendit payment page
                 return redirect($invoice['invoice_url']);
             } else {
@@ -176,6 +187,14 @@ class QuotaController extends Controller
                     'purchase_id' => $purchase->id,
                     'error' => $invoiceResult['error'],
                 ]);
+
+                // If AJAX request, return JSON error
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Failed to create payment invoice: ' . $invoiceResult['error'],
+                    ], 400);
+                }
 
                 return back()->withErrors(['payment' => 'Failed to create payment invoice: ' . $invoiceResult['error']]);
             }

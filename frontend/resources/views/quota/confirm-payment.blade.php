@@ -1,13 +1,13 @@
 @extends('layouts.base')
 
-@section('title', 'Confirm Payment')
+@section('title', 'Konfirmasi Pembayaran')
 
 @section('content')
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
             <h1 class="h3 mb-0 text-gray-800">
-                <i class="fas fa-money-check-alt"></i> Confirm Manual Payment
+                <i class="fas fa-money-check-alt"></i> Konfirmasi Pembayaran Manual
             </h1>
         </div>
     </div>
@@ -17,30 +17,30 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-info-circle"></i> Purchase Information
+                        <i class="fas fa-info-circle"></i> Informasi Pembelian
                     </h6>
                 </div>
                 <div class="card-body">
                     <table class="table table-bordered">
                         <tr>
-                            <th width="30%">Purchase Number</th>
+                            <th width="30%">Nomor Pembelian</th>
                             <td><strong>{{ $purchase->purchase_number }}</strong></td>
                         </tr>
                         <tr>
-                            <th>Amount</th>
+                            <th>Jumlah</th>
                             <td><strong class="text-primary">Rp {{ number_format($purchase->amount, 0, ',', '.') }}</strong></td>
                         </tr>
                         <tr>
-                            <th>Text Quota</th>
+                            <th>Quota Teks</th>
                             <td>{{ number_format($purchase->text_quota_added, 0, ',', '.') }} pesan</td>
                         </tr>
                         <tr>
-                            <th>Multimedia Quota</th>
+                            <th>Quota Multimedia</th>
                             <td>{{ number_format($purchase->multimedia_quota_added, 0, ',', '.') }} pesan</td>
                         </tr>
                         <tr>
                             <th>Status</th>
-                            <td><span class="badge badge-warning">Pending</span></td>
+                            <td><span class="badge badge-warning">Menunggu</span></td>
                         </tr>
                     </table>
                 </div>
@@ -49,7 +49,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-upload"></i> Payment Confirmation
+                        <i class="fas fa-upload"></i> Konfirmasi Pembayaran
                     </h6>
                 </div>
                 <div class="card-body">
@@ -77,7 +77,7 @@
 
                         <div class="form-group">
                             <label for="payment_reference" class="form-label">
-                                <i class="fas fa-receipt"></i> Payment Reference <span class="text-danger">*</span>
+                                <i class="fas fa-receipt"></i> Referensi Pembayaran <span class="text-danger">*</span>
                             </label>
                             <input type="text" 
                                    class="form-control @error('payment_reference') is-invalid @enderror" 
@@ -124,7 +124,7 @@
 
                         <div class="form-group">
                             <label for="notes" class="form-label">
-                                <i class="fas fa-sticky-note"></i> Additional Notes (Optional)
+                                <i class="fas fa-sticky-note"></i> Catatan Tambahan (Opsional)
                             </label>
                             <textarea class="form-control @error('notes') is-invalid @enderror" 
                                       id="notes" 
@@ -146,10 +146,10 @@
 
                         <div class="form-group">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-paper-plane"></i> Submit Payment Confirmation
+                                <i class="fas fa-paper-plane"></i> Kirim Konfirmasi Pembayaran
                             </button>
                             <a href="{{ route('quota.index') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Cancel
+                                <i class="fas fa-arrow-left"></i> Batal
                             </a>
                         </div>
                     </form>

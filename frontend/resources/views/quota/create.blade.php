@@ -1,18 +1,18 @@
 @extends('layouts.base')
 
-@section('title', 'Purchase Quota')
+@section('title', 'Beli Quota')
 
 @section('content')
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
             <h1 class="h3 mb-0 text-gray-800">
-                <i class="fas fa-shopping-cart"></i> Purchase Quota
+                <i class="fas fa-shopping-cart"></i> Beli Quota
             </h1>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{{ route('quota.index') }}">Quota</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Purchase</li>
+                    <li class="breadcrumb-item active" aria-current="page">Beli</li>
                 </ol>
             </nav>
         </div>
@@ -23,7 +23,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-shopping-cart"></i> Purchase Quota Form
+                        <i class="fas fa-shopping-cart"></i> Form Pembelian Quota
                     </h6>
                 </div>
                 <div class="card-body">
@@ -49,13 +49,13 @@
                         @csrf
 
                         <div class="alert alert-info mb-4">
-                            <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Purchase Information</h6>
+                            <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Informasi Pembelian</h6>
                             <p class="mb-0">Isi jumlah quota yang ingin dibeli untuk masing-masing jenis. Anda bisa membeli beberapa jenis sekaligus.</p>
                         </div>
 
                         <div class="form-group">
                             <label for="text_quota_quantity" class="form-label">
-                                <i class="fas fa-comment"></i> Text Quota (Premium)
+                                <i class="fas fa-comment"></i> Quota Teks (Premium)
                             </label>
                             <div class="input-group">
                                 <input type="number" 
@@ -204,7 +204,7 @@
                         </div>
 
                         <div class="form-group">
-                            <button type="submit" class="btn btn-primary btn-lg">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
                                 <i class="fas fa-shopping-cart"></i> Purchase Quota
                             </button>
                             <a href="{{ route('quota.index') }}" class="btn btn-secondary btn-lg">
@@ -386,5 +386,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+@push('scripts')
+<script>
+{!! file_get_contents(resource_path('js/xendit-payment.js')) !!}
+</script>
+@endpush
 @endsection
 

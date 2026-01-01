@@ -43,8 +43,6 @@ class HomeController extends Controller
 
         // Get user quota
         $quota = $user->getQuota();
-
-        $recentActivity = $this->fetchRecentActivity($user->id);
         
         // Get message statistics for current month
         $messageStats = $this->getMessageStatsForCurrentMonth($user->id);
@@ -68,7 +66,6 @@ class HomeController extends Controller
         return view('home', [
             'metrics' => $metrics,
             'quota' => $quota,
-            'recentActivity' => $recentActivity,
             'messageStats' => $messageStats,
             'quotaUsageStats' => $quotaUsageStats,
         ]);
@@ -100,29 +97,6 @@ class HomeController extends Controller
             ->where('direction', $direction)
             ->whereDate('created_at', Carbon::today())
             ->count();
-    }
-
-    protected function fetchRecentActivity(string $userId): array
-    {
-        if (! Schema::hasTable('messages')) {
-            return [];
-        }
-
-        return DB::table('messages')
-            ->select('direction', 'message_type', 'created_at')
-            ->where('user_id', $userId)
-            ->latest()
-            ->limit(5)
-            ->get()
-            ->map(function ($message) {
-                return [
-                    'direction' => $message->direction,
-                    'label' => $message->direction === 'outgoing' ? 'Message Sent' : 'Message Received',
-                    'type' => ucfirst($message->message_type),
-                    'timestamp' => Carbon::parse($message->created_at)->format('d M Y H:i'),
-                ];
-            })
-            ->toArray();
     }
 
     /**

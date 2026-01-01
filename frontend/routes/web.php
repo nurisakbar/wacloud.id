@@ -101,10 +101,10 @@ Route::middleware('auth')->group(function () {
     
     // Payment Management
     Route::post('/payment/create-invoice', [App\Http\Controllers\PaymentController::class, 'createInvoice'])->name('payment.create-invoice');
-    Route::get('/payment/{purchase}/status', [App\Http\Controllers\PaymentController::class, 'checkStatus'])->name('payment.check-status');
+    Route::get('/payment/{purchase}/check-status', [App\Http\Controllers\PaymentController::class, 'checkStatus'])->name('payment.check-status');
     Route::get('/payment/{purchase}/success', [App\Http\Controllers\PaymentController::class, 'success'])->name('payment.success');
     Route::get('/payment/{purchase}/failure', [App\Http\Controllers\PaymentController::class, 'failure'])->name('payment.failure');
-    Route::get('/payment/{purchase}/status-page', [App\Http\Controllers\PaymentController::class, 'status'])->name('payment.status');
+    Route::get('/payment/{purchase}/status', [App\Http\Controllers\PaymentController::class, 'status'])->name('payment.status');
     
     // Referral
     Route::get('/referral', [App\Http\Controllers\ReferralController::class, 'index'])->name('referral.index');

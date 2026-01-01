@@ -209,7 +209,7 @@
             <!-- Nav Item - Webhooks -->
             <li class="nav-item {{ request()->routeIs('webhooks.*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('webhooks.index') }}">
-                    <i class="fas fa-fw fa-webhook"></i>
+                    <i class="fas fa-fw fa-code-branch"></i>
                     <span>{{ __('Webhooks') }}</span>
                 </a>
             </li>

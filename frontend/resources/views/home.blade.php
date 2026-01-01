@@ -187,50 +187,6 @@
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <div>
-                <h2 class="h5 mb-0">Aktivitas Terbaru</h2>
-                <small class="text-muted">5 aktivitas terakhir dari akun Anda</small>
-            </div>
-            <span class="badge bg-light text-dark">Realtime</span>
-        </div>
-        <div class="card-body">
-            @if (empty($recentActivity))
-                <div class="text-center py-4">
-                    <p class="mb-1 fw-semibold">Belum ada aktivitas</p>
-                    <p class="text-muted mb-0">Pesan masuk/keluar akan muncul di sini setelah integrasi WAHA aktif.</p>
-                </div>
-            @else
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                        <tr>
-                            <th scope="col">Waktu</th>
-                            <th scope="col">Jenis</th>
-                            <th scope="col">Arah</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        @foreach ($recentActivity as $activity)
-                            <tr>
-                                <td class="text-nowrap">{{ $activity['timestamp'] }}</td>
-                                <td>
-                                    <span class="badge text-bg-primary">{{ $activity['type'] }}</span>
-                                </td>
-                                <td>
-                                    <span class="badge {{ $activity['direction'] === 'outgoing' ? 'text-bg-success' : 'text-bg-info' }}">
-                                        {{ $activity['label'] }}
-                                    </span>
-                                </td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        </div>
-    </div>
 </div>
 
 @push('scripts')

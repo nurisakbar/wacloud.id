@@ -38,22 +38,6 @@
                 </div>
 
                 <div class="card-body">
-                    <!-- Info about built-in webhook -->
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <i class="fas fa-check-circle"></i> 
-                        <strong>Fitur Utama - Built-in Webhook:</strong> Sistem secara otomatis menerima dan menyimpan pesan masuk secara real-time melalui webhook built-in. 
-                        Tidak perlu setup webhook manual - webhook dikonfigurasi otomatis saat device dibuat dan terhubung.
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                    
-                    <!-- Info about manual sync (optional) -->
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        <i class="fas fa-info-circle"></i> 
-                        <strong>Sync Manual (Opsional):</strong> Fitur "Sync Pesan Masuk" digunakan untuk mengambil pesan historis yang mungkin terlewat. 
-                        Untuk pesan baru, sistem akan otomatis menerima melalui webhook built-in.
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                    
                     @if (session('success'))
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             {{ session('success') }}
@@ -108,7 +92,6 @@
                                 <tr>
                                     <th>{{ __('Type') }}</th>
                                     <th>{{ __('From/To') }}</th>
-                                    <th>{{ __('Content') }}</th>
                                     <th>{{ __('Status') }}</th>
                                     <th>{{ __('Device') }}</th>
                                     <th>{{ __('Date') }}</th>
@@ -213,13 +196,12 @@ $(document).ready(function() {
         columns: [
             { data: 'type_badge', name: 'type_badge', orderable: false, searchable: false },
             { data: 'from_to', name: 'from_to', orderable: false, searchable: false },
-            { data: 'content_preview', name: 'content', orderable: false },
             { data: 'status_badge', name: 'status', orderable: false, searchable: false },
             { data: 'session_name', name: 'session_name', orderable: false },
             { data: 'formatted_date', name: 'created_at', orderable: true },
             { data: 'actions', name: 'actions', orderable: false, searchable: false }
         ],
-        order: [[5, 'desc']], // Order by date (column 5) descending
+        order: [[4, 'desc']], // Order by date (column 4) descending
         pageLength: 10,
         language: {
             processing: "Memproses...",
