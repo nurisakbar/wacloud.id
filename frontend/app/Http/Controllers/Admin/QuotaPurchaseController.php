@@ -96,6 +96,37 @@ class QuotaPurchaseController extends Controller
     }
 
     /**
+     * Approve purchase via GET (for direct link access from WhatsApp)
+     */
+    public function approveGet(QuotaPurchase $quotaPurchase)
+    {
+        if ($quotaPurchase->status === 'completed') {
+            return redirect()->route('admin.quota-purchases.show', $quotaPurchase)
+                ->with('error', 'Purchase already completed.');
+        }
+
+        if ($quotaPurchase->status === 'failed') {
+            return redirect()->route('admin.quota-purchases.show', $quotaPurchase)
+                ->with('error', 'Cannot approve a failed purchase.');
+        }
+
+        if (!in_array($quotaPurchase->status, ['waiting_payment', 'pending', 'pending_verification'])) {
+            return redirect()->route('admin.quota-purchases.show', $quotaPurchase)
+                ->with('error', 'Can only approve waiting payment, pending or pending verification purchases.');
+        }
+
+        $quotaPurchase->complete();
+
+        Log::info('Quota purchase approved by admin via GET link', [
+            'purchase_id' => $quotaPurchase->id,
+            'approved_by' => auth()->id() ?? 'via_direct_link',
+        ]);
+
+        return redirect()->route('admin.quota-purchases.show', $quotaPurchase)
+            ->with('success', 'Purchase approved and quota has been added to user account.');
+    }
+
+    /**
      * Reject purchase
      */
     public function reject(Request $request, QuotaPurchase $quotaPurchase)

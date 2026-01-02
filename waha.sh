@@ -15,6 +15,7 @@
 #   logs        - View WAHA logs (use -f to follow)
 #   backup      - Backup WAHA sessions
 #   restore     - Restore WAHA sessions from backup
+#   pull        - Pull WAHA Plus image (with auto login/logout)
 #   update      - Update WAHA to latest version
 #   shell       - Open shell in WAHA container
 #   help        - Show this help message
@@ -187,28 +188,16 @@ cmd_start() {
     check_docker
     check_env
     
-    # Check if using waha-plus and verify docker login
+    # Check if using waha-plus and pull image if needed
     WAHA_IMAGE=$(grep WAHA_IMAGE "$ENV_FILE" 2>/dev/null | cut -d'=' -f2 || echo "devlikeapro/waha-plus:latest")
     if echo "$WAHA_IMAGE" | grep -q "waha-plus"; then
-        # Check if logged in to docker
-        if ! docker info | grep -q "Username"; then
-            print_warning "Using WAHA PLUS but not logged in to Docker Hub"
+        # Check if image exists locally
+        if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^${WAHA_IMAGE}$"; then
+            print_warning "WAHA Plus image not found locally"
             echo ""
-            print_info "Please login first:"
-            echo "  docker login"
+            print_info "Pulling WAHA Plus image with automatic login..."
+            cmd_pull
             echo ""
-            read -p "Do you want to login now? (y/N): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                docker login
-                if [ $? -ne 0 ]; then
-                    print_error "Docker login failed!"
-                    exit 1
-                fi
-            else
-                print_error "Cannot proceed without Docker login for WAHA PLUS"
-                exit 1
-            fi
         fi
     fi
     
@@ -223,6 +212,8 @@ cmd_start() {
         fi
     else
         print_info "Starting WAHA container..."
+        START_SUCCESS=false
+        
         if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d waha 2>&1 | tee /tmp/waha-start.log; then
             # Check if error is about pull access denied
             if grep -q "pull access denied\|repository does not exist\|may require 'docker login'" /tmp/waha-start.log 2>/dev/null; then
@@ -233,29 +224,43 @@ cmd_start() {
                 if echo "$WAHA_IMAGE" | grep -q "waha-plus"; then
                     print_warning "You're trying to use WAHA PLUS (paid version)"
                     echo ""
-                    print_info "Solutions:"
-                    echo "  1. Login to Docker Hub: docker login"
-                    echo "  2. Or switch to free version:"
-                    echo "     Edit .env and change:"
-                    echo "     WAHA_IMAGE=devlikeapro/waha:latest"
+                    print_info "Attempting to pull with automatic login..."
+                    cmd_pull
                     echo ""
-                    echo "  3. Then run: ./waha.sh start"
+                    print_info "Retrying container start..."
+                    if $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d waha 2>&1 | tee /tmp/waha-start-retry.log; then
+                        START_SUCCESS=true
+                    else
+                        print_error "Still failed after pull. Check logs: ./waha.sh logs"
+                        rm -f /tmp/waha-start.log /tmp/waha-start-retry.log
+                        exit 1
+                    fi
+                    rm -f /tmp/waha-start.log /tmp/waha-start-retry.log
                 else
                     print_info "Trying to pull image: $WAHA_IMAGE"
                     print_info "If this image doesn't exist, check:"
                     echo "  - Image name in .env file"
                     echo "  - Internet connection"
                     echo "  - Docker Hub access"
+                    rm -f /tmp/waha-start.log
+                    exit 1
                 fi
+            else
+                print_error "Failed to start WAHA"
+                print_info "Check logs: ./waha.sh logs"
                 rm -f /tmp/waha-start.log
                 exit 1
             fi
+        else
+            START_SUCCESS=true
+            rm -f /tmp/waha-start.log
+        fi
+        
+        if [ "$START_SUCCESS" = false ]; then
             print_error "Failed to start WAHA"
             print_info "Check logs: ./waha.sh logs"
-            rm -f /tmp/waha-start.log
             exit 1
         fi
-        rm -f /tmp/waha-start.log
     fi
     
     sleep 3
@@ -321,6 +326,19 @@ cmd_recreate() {
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         print_info "Cancelled"
         return 0
+    fi
+    
+    # Check if using waha-plus and pull image if needed
+    WAHA_IMAGE=$(grep WAHA_IMAGE "$ENV_FILE" 2>/dev/null | cut -d'=' -f2 || echo "devlikeapro/waha-plus:latest")
+    if echo "$WAHA_IMAGE" | grep -q "waha-plus"; then
+        # Check if image exists locally
+        if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^${WAHA_IMAGE}$"; then
+            print_warning "WAHA Plus image not found locally"
+            echo ""
+            print_info "Pulling WAHA Plus image with automatic login..."
+            cmd_pull
+            echo ""
+        fi
     fi
     
     print_info "Stopping and removing WAHA container..."
@@ -503,14 +521,68 @@ cmd_restore() {
 # Other Functions
 # ============================================================================
 
+cmd_pull() {
+    print_header "Pulling WAHA Plus Image"
+    
+    check_docker
+    
+    # Docker Hub credentials for WAHA Plus
+    DOCKER_USERNAME="devlikeapro"
+    DOCKER_PASSWORD="dckr_pat_RWx6IjPvhnwkEOpmgGJOPeMT9AQ"
+    WAHA_IMAGE="devlikeapro/waha-plus:latest"
+    
+    print_info "Logging in to Docker Hub..."
+    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    
+    if [ $? -ne 0 ]; then
+        print_error "Docker login failed!"
+        exit 1
+    fi
+    
+    print_success "Logged in to Docker Hub"
+    echo ""
+    
+    print_info "Pulling WAHA Plus image: $WAHA_IMAGE"
+    docker pull "$WAHA_IMAGE"
+    
+    if [ $? -ne 0 ]; then
+        print_error "Failed to pull WAHA Plus image!"
+        docker logout
+        exit 1
+    fi
+    
+    print_success "Image pulled successfully!"
+    echo ""
+    
+    print_info "Logging out from Docker Hub..."
+    docker logout
+    
+    if [ $? -eq 0 ]; then
+        print_success "Logged out from Docker Hub"
+    else
+        print_warning "Logout failed (non-critical)"
+    fi
+    
+    echo ""
+    print_info "Image ready: $WAHA_IMAGE"
+    print_info "You can now start WAHA with: ./waha.sh start"
+}
+
 cmd_update() {
     print_header "Updating WAHA"
     
     check_docker
     check_env
     
-    print_info "Pulling latest WAHA image..."
-    $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull waha
+    # Check if using waha-plus
+    WAHA_IMAGE=$(grep WAHA_IMAGE "$ENV_FILE" 2>/dev/null | cut -d'=' -f2 || echo "devlikeapro/waha-plus:latest")
+    if echo "$WAHA_IMAGE" | grep -q "waha-plus"; then
+        print_info "Using WAHA PLUS - pulling with automatic login..."
+        cmd_pull
+    else
+        print_info "Pulling latest WAHA image..."
+        $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" pull waha
+    fi
     
     print_info "Restarting with new image..."
     $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d waha
@@ -545,6 +617,7 @@ cmd_help() {
     echo "  logs [-f]          View WAHA logs (use -f to follow)"
     echo "  backup [dir]       Backup WAHA sessions (default: ./backups)"
     echo "  restore <file>    Restore WAHA sessions from backup"
+    echo "  pull               Pull WAHA Plus image (with auto login/logout)"
     echo "  update             Update WAHA to latest version"
     echo "  shell              Open shell in WAHA container"
     echo "  help               Show this help message"
@@ -591,6 +664,9 @@ case "$COMMAND" in
         ;;
     restore)
         cmd_restore "$2"
+        ;;
+    pull)
+        cmd_pull
         ;;
     update)
         cmd_update

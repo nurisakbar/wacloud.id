@@ -40,13 +40,29 @@ class WahaService
         $apiKey = $this->apiKey ?? env('WAHA_API_KEY');
         
         if ($apiKey) {
+            // Mask API key for logging (show first 4 and last 4 chars)
+            $maskedKey = strlen($apiKey) > 8 
+                ? substr($apiKey, 0, 4) . '...' . substr($apiKey, -4) 
+                : '***';
+            
+            Log::debug('WAHA: Using API key for authentication', [
+                'api_key_masked' => $maskedKey,
+                'api_key_length' => strlen($apiKey),
+                'base_url' => $this->baseUrl,
+            ]);
+            
             $client->withHeaders([
                 'X-Api-Key' => $apiKey,
             ]);
         } else {
             // If no API key configured, try to get from WAHA logs (for development)
             // In production, always set WAHA_API_KEY in .env
-            Log::warning('WAHA API key not configured. Requests may fail with 401 Unauthorized.');
+            Log::error('WAHA API key not configured. Requests will fail with 401 Unauthorized.', [
+                'base_url' => $this->baseUrl,
+                'config_api_key' => $this->apiKey ? 'set (from config)' : 'null',
+                'env_api_key' => env('WAHA_API_KEY') ? 'set (from env)' : 'null',
+                'solution' => 'Set WAHA_API_KEY in .env file to match the API key in docker .env file',
+            ]);
         }
         
         return $client;
@@ -75,6 +91,8 @@ class WahaService
                 Log::info('WAHA: Creating session', [
                     'session_id' => $sessionId,
                     'url' => $url,
+                    'base_url' => $this->baseUrl,
+                    'api_key_configured' => !empty($this->apiKey ?? env('WAHA_API_KEY')),
                     'attempt' => $retryCount + 1,
                 ]);
                 
@@ -164,10 +182,19 @@ class WahaService
                 // Don't retry on 4xx errors (client errors)
                 if ($response->status() >= 400 && $response->status() < 500) {
                     $errorMessage = $response->json()['message'] ?? 'Failed to create session';
+                    $responseBody = $response->body();
+                    
                     Log::error('WAHA create session failed (client error)', [
                         'session_id' => $sessionId,
                         'status' => $response->status(),
                         'error' => $errorMessage,
+                        'url' => $url,
+                        'base_url' => $this->baseUrl,
+                        'api_key_configured' => !empty($this->apiKey ?? env('WAHA_API_KEY')),
+                        'response_body' => $responseBody,
+                        'solution' => $response->status() === 401 
+                            ? 'Check WAHA_API_KEY in Laravel .env matches WAHA_API_KEY in docker .env. Also verify WAHA_API_URL matches WAHA_PORT (e.g., http://localhost:3002)'
+                            : 'Check request payload and WAHA API documentation',
                     ]);
                     return [
                         'success' => false,

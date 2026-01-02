@@ -41,6 +41,13 @@ return [
         'api_key' => env('WAHA_API_KEY', null),
     ],
 
+    'wacloud' => [
+        'api_key' => env('WACLOUD_API_KEY'),
+        'base_url' => env('WACLOUD_BASE_URL', 'https://app.wacloud.id/api/v1'),
+        'device_id' => env('WACLOUD_DEVICE_ID'),
+        'admin_phone' => env('WACLOUD_ADMIN_PHONE', '089699935552'),
+    ],
+
     'xendit' => [
         'secret_key' => env('XENDIT_SECRET_KEY'),
         'public_key' => env('XENDIT_PUBLIC_KEY'),

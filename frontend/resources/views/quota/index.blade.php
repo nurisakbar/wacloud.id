@@ -83,134 +83,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Purchase History -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-history"></i> Riwayat Pembelian
-                    </h6>
-                </div>
-                <div class="card-body">
-                    @if($purchases->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Nomor Pembelian</th>
-                                        <th>Tanggal</th>
-                                        <th>Jumlah</th>
-                                        <th>Status</th>
-                                        <th>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($purchases as $purchase)
-                                        <tr>
-                                            <td><strong>{{ $purchase->purchase_number }}</strong></td>
-                                            <td>{{ $purchase->created_at->format('d/m/Y H:i') }}</td>
-                                            <td><strong>Rp {{ number_format($purchase->amount, 0, ',', '.') }}</strong></td>
-                                            <td>
-                                                @if($purchase->status === 'completed')
-                                                    <span class="badge badge-success">Selesai</span>
-                                                @elseif($purchase->status === 'pending_verification')
-                                                    <span class="badge badge-info">
-                                                        <i class="fas fa-clock"></i> Menunggu Konfirmasi Admin
-                                                    </span>
-                                                @elseif($purchase->status === 'waiting_payment')
-                                                    <span class="badge badge-warning">
-                                                        <i class="fas fa-money-bill-wave"></i> Menunggu Pembayaran
-                                                    </span>
-                                                @elseif($purchase->status === 'pending')
-                                                    <span class="badge badge-warning">Menunggu</span>
-                                                @elseif($purchase->status === 'failed')
-                                                    <span class="badge badge-danger">Gagal</span>
-                                                @else
-                                                    <span class="badge badge-secondary">{{ ucfirst($purchase->status) }}</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <div class="d-flex gap-1 flex-wrap">
-                                                    @if($purchase->status === 'completed')
-                                                        <span class="badge badge-success">
-                                                            <i class="fas fa-check-circle"></i> Selesai
-                                                        </span>
-                                                    @elseif($purchase->status === 'pending_verification')
-                                                        <span class="badge badge-info">
-                                                            <i class="fas fa-clock"></i> Menunggu verifikasi admin
-                                                        </span>
-                                                    @elseif($purchase->payment_method === 'xendit')
-                                                        {{-- Xendit Payment --}}
-                                                        @if($purchase->xendit_invoice_url)
-                                                            @if(in_array($purchase->status, ['pending', 'waiting_payment']))
-                                                                <a href="{{ $purchase->xendit_invoice_url }}" 
-                                                                   target="_blank" 
-                                                                   class="btn btn-sm btn-success"
-                                                                   title="Klik untuk melakukan pembayaran via Xendit">
-                                                                    <i class="fas fa-credit-card"></i> Bayar via Xendit
-                                                                </a>
-                                                            @else
-                                                                <a href="{{ $purchase->xendit_invoice_url }}" 
-                                                                   target="_blank" 
-                                                                   class="btn btn-sm btn-outline-info"
-                                                                   title="Lihat invoice Xendit">
-                                                                    <i class="fas fa-external-link-alt"></i> Lihat Invoice
-                                                                </a>
-                                                            @endif
-                                                        @elseif(in_array($purchase->status, ['pending', 'waiting_payment']))
-                                                            <button type="button" 
-                                                                    class="btn btn-sm btn-primary" 
-                                                                    onclick="createXenditInvoice({{ $purchase->id }})"
-                                                                    id="btn-create-invoice-{{ $purchase->id }}"
-                                                                    title="Buat invoice pembayaran Xendit">
-                                                                <i class="fas fa-plus-circle"></i> Buat Invoice
-                                                            </button>
-                                                        @else
-                                                            <span class="badge badge-warning">
-                                                                <i class="fas fa-exclamation-triangle"></i> Invoice belum dibuat
-                                                            </span>
-                                                        @endif
-                                                    @elseif($purchase->payment_method === 'manual')
-                                                        {{-- Manual Payment --}}
-                                                        @if(in_array($purchase->status, ['waiting_payment', 'pending']))
-                                                            <a href="{{ route('quota.confirm-payment', $purchase) }}" 
-                                                               class="btn btn-sm btn-primary"
-                                                               title="Konfirmasi pembayaran manual dengan upload bukti transfer">
-                                                                <i class="fas fa-upload"></i> Konfirmasi Pembayaran
-                                                            </a>
-                                                        @elseif($purchase->status === 'pending_verification')
-                                                            <span class="badge badge-info">
-                                                                <i class="fas fa-clock"></i> Menunggu verifikasi admin
-                                                            </span>
-                                                        @else
-                                                            <span class="badge badge-secondary">
-                                                                <i class="fas fa-info-circle"></i> Menunggu verifikasi
-                                                            </span>
-                                                        @endif
-                                                    @else
-                                                        <span class="text-muted">-</span>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="mt-3">
-                            {{ $purchases->links() }}
-                        </div>
-                    @else
-                        <div class="text-center py-5">
-                            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">Belum ada riwayat pembelian.</p>
-                            <a href="{{ route('quota.create') }}" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Beli Quota
-                            </a>
-                        </div>
-                    @endif
-                </div>
-            </div>
         </div>
 
         <!-- Sidebar Info -->
@@ -242,31 +114,103 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Quick Actions -->
+    <!-- Purchase History - Full Width -->
+    <div class="row">
+        <div class="col-12">
+            <!-- Purchase History -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-bolt"></i> Aksi Cepat
+                        <i class="fas fa-history"></i> Riwayat Pembelian
                     </h6>
                 </div>
                 <div class="card-body">
-                    <a href="{{ route('quota.create') }}" class="btn btn-primary btn-block mb-2">
-                        <i class="fas fa-shopping-cart"></i> Beli Quota
-                    </a>
-                    <a href="{{ route('billing.index') }}" class="btn btn-outline-secondary btn-block">
-                        <i class="fas fa-credit-card"></i> Lihat Tagihan
-                    </a>
+                    <div class="table-responsive">
+                        <table id="purchasesTable" class="table table-bordered table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Nomor Pembelian</th>
+                                    <th>Tanggal</th>
+                                    <th>Jumlah</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- DataTables will populate this -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+@push('styles')
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+@endpush
+
 @push('scripts')
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 <script>
+$(document).ready(function() {
+    var table = $('#purchasesTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{{ route("quota.purchases.datatable") }}',
+            type: 'GET',
+            error: function(xhr, error, thrown) {
+                console.error('DataTables Ajax Error:', error);
+                alert('Terjadi kesalahan saat memuat data. Silakan refresh halaman.');
+            }
+        },
+        columns: [
+            { data: 0, name: 'purchase_number', orderable: true, searchable: true },
+            { data: 1, name: 'created_at', orderable: true, searchable: false },
+            { data: 2, name: 'amount', orderable: true, searchable: true },
+            { data: 3, name: 'status', orderable: true, searchable: true },
+            { data: 4, name: 'action', orderable: false, searchable: false },
+        ],
+        order: [[1, 'desc']], // Default order by date (descending)
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json',
+            processing: '<i class="fas fa-spinner fa-spin"></i> Memuat data...',
+            emptyTable: 'Belum ada riwayat pembelian.',
+            zeroRecords: 'Tidak ada data yang cocok dengan pencarian Anda.',
+            lengthMenu: 'Tampilkan _MENU_ data per halaman',
+            info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ data',
+            infoEmpty: 'Menampilkan 0 sampai 0 dari 0 data',
+            infoFiltered: '(disaring dari _MAX_ total data)',
+            search: 'Cari:',
+            paginate: {
+                first: 'Pertama',
+                last: 'Terakhir',
+                next: 'Selanjutnya',
+                previous: 'Sebelumnya'
+            }
+        },
+        pageLength: 10,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        responsive: true,
+        drawCallback: function() {
+            // Re-initialize any dynamic elements after table redraw
+        }
+    });
+});
+
 function createXenditInvoice(purchaseId) {
     const btn = document.getElementById('btn-create-invoice-' + purchaseId);
+    if (!btn) {
+        console.error('Button not found for purchase ID:', purchaseId);
+        return;
+    }
+    
     const originalHtml = btn.innerHTML;
     
     // Disable button and show loading
@@ -291,9 +235,9 @@ function createXenditInvoice(purchaseId) {
             // Redirect to Xendit payment page
             window.open(data.invoice_url, '_blank');
             
-            // Reload page after a moment to update the invoice URL
+            // Reload DataTable after a moment to update the invoice URL
             setTimeout(() => {
-                window.location.reload();
+                $('#purchasesTable').DataTable().ajax.reload(null, false);
             }, 1000);
         } else {
             alert('Gagal membuat invoice: ' + (data.error || 'Unknown error'));

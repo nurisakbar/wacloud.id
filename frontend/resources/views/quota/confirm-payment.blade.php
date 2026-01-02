@@ -13,7 +13,7 @@
     </div>
 
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-12">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
@@ -21,11 +21,12 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    <table class="table table-bordered">
-                        <tr>
-                            <th width="30%">Nomor Pembelian</th>
-                            <td><strong>{{ $purchase->purchase_number }}</strong></td>
-                        </tr>
+                    <div class="table-responsive">
+                        <table class="table table-bordered w-100">
+                            <tr>
+                                <th style="width: 25%;">Nomor Pembelian</th>
+                                <td><strong>{{ $purchase->purchase_number }}</strong></td>
+                            </tr>
                         <tr>
                             <th>Jumlah</th>
                             <td><strong class="text-primary">Rp {{ number_format($purchase->amount, 0, ',', '.') }}</strong></td>
@@ -38,11 +39,12 @@
                             <th>Quota Multimedia</th>
                             <td>{{ number_format($purchase->multimedia_quota_added, 0, ',', '.') }} pesan</td>
                         </tr>
-                        <tr>
-                            <th>Status</th>
-                            <td><span class="badge badge-warning">Menunggu</span></td>
-                        </tr>
-                    </table>
+                            <tr>
+                                <th>Status</th>
+                                <td><span class="badge badge-warning">Menunggu</span></td>
+                            </tr>
+                        </table>
+                    </div>
                 </div>
             </div>
 

@@ -15,6 +15,8 @@ class VerifyCsrfToken extends Middleware
         'test-terima-lab',
         'webhook/receive/*',
         'webhook/xendit',
+        'webhook/wacloud',
+        'webhook/wacloud/*',
     ];
 }
 

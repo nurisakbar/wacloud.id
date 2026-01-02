@@ -8,6 +8,40 @@ use Illuminate\Support\Str;
 
 class QuotaPurchase extends Model
 {
+    /**
+     * Indicates if the IDs are auto-incrementing.
+     *
+     * @var bool
+     */
+    public $incrementing = false;
+
+    /**
+     * The "type" of the primary key ID.
+     *
+     * @var string
+     */
+    protected $keyType = 'string';
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            // Generate UUID if not set
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
+            }
+            
+            // Generate purchase number if not set
+            if (empty($model->purchase_number)) {
+                $model->purchase_number = 'QUOTA-' . strtoupper(Str::random(8)) . '-' . now()->format('Ymd');
+            }
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'purchase_number',
@@ -36,19 +70,6 @@ class QuotaPurchase extends Model
         ];
     }
 
-    /**
-     * Boot the model.
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($model) {
-            if (empty($model->purchase_number)) {
-                $model->purchase_number = 'QUOTA-' . strtoupper(Str::random(8)) . '-' . now()->format('Ymd');
-            }
-        });
-    }
 
     /**
      * Get the user that made the purchase.

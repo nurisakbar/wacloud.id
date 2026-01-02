@@ -155,7 +155,8 @@
                                     required>
                                 <option value="">-- Pilih Metode Pembayaran --</option>
                                 <option value="manual" {{ old('payment_method') === 'manual' ? 'selected' : '' }}>Manual Transfer</option>
-                                <option value="xendit" {{ old('payment_method') === 'xendit' ? 'selected' : '' }}>Xendit (Online Payment)</option>
+                                {{-- Xendit payment disabled --}}
+                                {{-- <option value="xendit" {{ old('payment_method') === 'xendit' ? 'selected' : '' }}>Xendit (Online Payment)</option> --}}
                             </select>
                             @error('payment_method')
                                 <span class="invalid-feedback d-block" role="alert">
@@ -163,44 +164,35 @@
                                 </span>
                             @enderror
                             <small class="form-text text-muted">
-                                Pilih Xendit untuk pembayaran online via payment gateway, atau Manual untuk transfer manual.
+                                Silakan pilih Manual Transfer untuk melakukan pembayaran via transfer bank.
                             </small>
                         </div>
 
-                        <div class="form-group" id="payment-reference-field" style="display: none;">
-                            <label for="payment_reference" class="form-label">
-                                <i class="fas fa-receipt"></i> Payment Reference
-                            </label>
-                            <input type="text" 
-                                   class="form-control @error('payment_reference') is-invalid @enderror" 
-                                   id="payment_reference" 
-                                   name="payment_reference" 
-                                   value="{{ old('payment_reference') }}" 
-                                   placeholder="No. rekening, transaction ID, dll">
-                            @error('payment_reference')
-                                <span class="invalid-feedback d-block" role="alert">
-                                    <strong>{{ $message }}</strong>
-                                </span>
-                            @enderror
-                            <small class="form-text text-muted">
-                                Isi jika sudah melakukan pembayaran manual (untuk verifikasi admin)
-                            </small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="notes" class="form-label">
-                                <i class="fas fa-sticky-note"></i> Notes
-                            </label>
-                            <textarea class="form-control @error('notes') is-invalid @enderror" 
-                                      id="notes" 
-                                      name="notes" 
-                                      rows="3" 
-                                      placeholder="Catatan tambahan...">{{ old('notes') }}</textarea>
-                            @error('notes')
-                                <span class="invalid-feedback d-block" role="alert">
-                                    <strong>{{ $message }}</strong>
-                                </span>
-                            @enderror
+                        <!-- Manual Payment Instructions -->
+                        <div class="alert alert-info" id="manual-payment-instructions" style="display: none;">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle"></i> Instruksi Pembayaran Manual
+                            </h6>
+                            <hr>
+                            <div class="mb-3">
+                                <strong><i class="fas fa-university"></i> Transfer ke Rekening:</strong>
+                                <div class="mt-2 ml-3">
+                                    <p class="mb-1"><strong>Bank:</strong> Mandiri</p>
+                                    <p class="mb-1"><strong>No. Rekening:</strong> <span class="font-weight-bold text-primary">1320025238651</span></p>
+                                    <p class="mb-0"><strong>Atas Nama:</strong> <span class="font-weight-bold">NURIS AKBAR</span></p>
+                                </div>
+                            </div>
+                            <div class="mb-0">
+                                <strong><i class="fas fa-phone"></i> Konfirmasi Pembayaran:</strong>
+                                <div class="mt-2 ml-3">
+                                    <p class="mb-0">
+                                        Setelah melakukan transfer, silakan konfirmasi pembayaran Anda ke: 
+                                        <a href="https://wa.me/6289699935552" target="_blank" class="font-weight-bold text-success">
+                                            <i class="fab fa-whatsapp"></i> 089699935552
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -349,11 +341,14 @@ function formatNumber(num) {
 
 // Handle payment method change
 document.getElementById('payment_method').addEventListener('change', function() {
-    const paymentReferenceField = document.getElementById('payment-reference-field');
+    const manualPaymentInstructions = document.getElementById('manual-payment-instructions');
+    
     if (this.value === 'manual') {
-        paymentReferenceField.style.display = 'block';
+        // Show manual payment instructions
+        manualPaymentInstructions.style.display = 'block';
     } else {
-        paymentReferenceField.style.display = 'none';
+        // Hide manual payment instructions
+        manualPaymentInstructions.style.display = 'none';
     }
 });
 
@@ -381,16 +376,22 @@ document.addEventListener('DOMContentLoaded', function() {
     calculateTotalAmount();
     // Trigger payment method change handler
     const paymentMethod = document.getElementById('payment_method');
+    const manualPaymentInstructions = document.getElementById('manual-payment-instructions');
+    
     if (paymentMethod.value) {
         paymentMethod.dispatchEvent(new Event('change'));
+    } else {
+        // Default: hide manual instructions
+        manualPaymentInstructions.style.display = 'none';
     }
 });
 </script>
 
-@push('scripts')
+{{-- Xendit payment script disabled --}}
+{{-- @push('scripts')
 <script>
 {!! file_get_contents(resource_path('js/xendit-payment.js')) !!}
 </script>
-@endpush
+@endpush --}}
 @endsection
 

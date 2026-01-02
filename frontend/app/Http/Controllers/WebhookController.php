@@ -16,7 +16,7 @@ class WebhookController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth')->except('receive');
+        $this->middleware('auth')->except(['receive', 'wacloud']);
     }
 
     public function index()
@@ -683,6 +683,67 @@ class WebhookController extends Controller
                 'error' => $e->getMessage(),
                 'payload' => $payload,
             ]);
+        }
+    }
+
+    /**
+     * Handle webhook from WACloud
+     * Endpoint: POST /webhook/wacloud
+     */
+    public function wacloud(Request $request)
+    {
+        // Log webhook receipt from WACloud
+        Log::info('WACloud webhook: Received webhook', [
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'headers' => $request->headers->all(),
+            'body' => $request->all(),
+        ]);
+
+        try {
+            // Get webhook data from request
+            $data = $request->all();
+            
+            // Log the webhook payload
+            Log::info('WACloud webhook: Payload received', [
+                'data' => $data,
+            ]);
+
+            // Process WACloud webhook data
+            // Adjust this based on WACloud webhook format
+            $event = $data['event'] ?? $data['type'] ?? 'unknown';
+            $payload = $data['data'] ?? $data['payload'] ?? $data;
+
+            Log::info('WACloud webhook: Processing event', [
+                'event' => $event,
+                'payload' => $payload,
+            ]);
+
+            // TODO: Process WACloud webhook events here
+            // Examples:
+            // - Message status updates
+            // - Delivery receipts
+            // - Read receipts
+            // - Session status changes
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Webhook received successfully',
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('WACloud webhook: Error processing webhook', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Error processing webhook: ' . $e->getMessage(),
+            ], 500);
         }
     }
 }

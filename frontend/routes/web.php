@@ -91,6 +91,7 @@ Route::middleware('auth')->group(function () {
     
     // Quota Management
     Route::get('/quota', [App\Http\Controllers\QuotaController::class, 'index'])->name('quota.index');
+    Route::get('/quota/purchases/datatable', [App\Http\Controllers\QuotaController::class, 'purchasesDataTable'])->name('quota.purchases.datatable');
     Route::get('/quota/create', [App\Http\Controllers\QuotaController::class, 'create'])->name('quota.create');
     Route::post('/quota/purchase', [App\Http\Controllers\QuotaController::class, 'purchase'])->name('quota.purchase');
     Route::get('/quota/purchase/{purchase}/confirm-payment', [App\Http\Controllers\QuotaController::class, 'showConfirmPayment'])->name('quota.confirm-payment');
@@ -119,6 +120,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/quota-purchases', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'index'])->name('quota-purchases.index');
         Route::get('/quota-purchases/{quotaPurchase}', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'show'])->name('quota-purchases.show');
         Route::post('/quota-purchases/{quotaPurchase}/approve', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'approve'])->name('quota-purchases.approve');
+        Route::get('/quota-purchases/{quotaPurchase}/approve', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'approveGet'])->name('quota-purchases.approve.get');
         Route::post('/quota-purchases/{quotaPurchase}/reject', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'reject'])->name('quota-purchases.reject');
         
         // Users Management
@@ -132,6 +134,9 @@ Route::middleware('auth')->group(function () {
 
 // Webhook receiver (public endpoint)
 Route::post('/webhook/receive/{session}', [App\Http\Controllers\WebhookController::class, 'receive'])->name('webhook.receive');
+
+// WACloud webhook (public endpoint)
+Route::post('/webhook/wacloud', [App\Http\Controllers\WebhookController::class, 'wacloud'])->name('webhook.wacloud');
 
 // Xendit webhook (public endpoint)
 Route::post('/webhook/xendit', [App\Http\Controllers\QuotaController::class, 'webhook'])->name('webhook.xendit');
