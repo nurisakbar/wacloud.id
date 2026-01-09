@@ -337,7 +337,8 @@ class WebhookController extends Controller
             $isFromMe = !empty($payload['fromMe']) && $payload['fromMe'] === true;
             $direction = $isFromMe ? 'outgoing' : 'incoming';
 
-            $whatsappMessageId = $payload['id'] ?? null;
+            // Extract WhatsApp message ID - handle both string and object formats
+            $whatsappMessageId = $this->extractMessageId($payload['id'] ?? null);
             if (!$whatsappMessageId) {
                 Log::warning('Webhook: Message ID not found in payload', ['payload' => $payload]);
                 return;
@@ -464,7 +465,8 @@ class WebhookController extends Controller
     protected function handleMessageAck(WhatsAppSession $session, array $payload)
     {
         try {
-            $whatsappMessageId = $payload['id'] ?? null;
+            // Extract WhatsApp message ID - handle both string and object formats
+            $whatsappMessageId = $this->extractMessageId($payload['id'] ?? null);
             if (!$whatsappMessageId) {
                 return;
             }
@@ -508,6 +510,33 @@ class WebhookController extends Controller
                 'payload' => $payload,
             ]);
         }
+    }
+
+    /**
+     * Extract WhatsApp message ID from payload (handles both string and object formats)
+     */
+    protected function extractMessageId($idData): ?string
+    {
+        if (!$idData) {
+            return null;
+        }
+
+        // Handle ID as object/array (WAHA format: {"fromMe":false,"remote":"...","id":"..."})
+        if (is_array($idData)) {
+            $messageId = $idData['id'] ?? $idData['_serialized'] ?? null;
+            // If still not found, try to construct from available data
+            if (!$messageId && isset($idData['remote']) && isset($idData['id'])) {
+                $messageId = $idData['id'];
+            }
+            // Fallback: use remote + id combination
+            if (!$messageId && isset($idData['remote'])) {
+                $messageId = ($idData['remote'] ?? '') . '_' . ($idData['id'] ?? uniqid());
+            }
+        } else {
+            $messageId = $idData;
+        }
+
+        return $messageId ? (string) $messageId : null;
     }
 
     /**
@@ -588,7 +617,7 @@ class WebhookController extends Controller
     protected function handleMessageReaction(WhatsAppSession $session, array $payload)
     {
         try {
-            $reactionMessageId = $payload['reaction']['messageId'] ?? null;
+            $reactionMessageId = $this->extractMessageId($payload['reaction']['messageId'] ?? null);
             if (!$reactionMessageId) {
                 return;
             }
@@ -621,7 +650,7 @@ class WebhookController extends Controller
     protected function handleMessageEdited(WhatsAppSession $session, array $payload)
     {
         try {
-            $whatsappMessageId = $payload['id'] ?? null;
+            $whatsappMessageId = $this->extractMessageId($payload['id'] ?? null);
             if (!$whatsappMessageId) {
                 return;
             }
@@ -657,11 +686,14 @@ class WebhookController extends Controller
     {
         try {
             $beforeMessage = $payload['before'] ?? null;
-            if (!$beforeMessage || !isset($beforeMessage['id'])) {
+            if (!$beforeMessage) {
                 return;
             }
 
-            $whatsappMessageId = $beforeMessage['id'];
+            $whatsappMessageId = $this->extractMessageId($beforeMessage['id'] ?? null);
+            if (!$whatsappMessageId) {
+                return;
+            }
             $message = Message::where('whatsapp_message_id', $whatsappMessageId)
                 ->where('session_id', $session->id)
                 ->first();

@@ -113,16 +113,50 @@ class WahaService
                 
                 // Build webhook URL for receiving messages (BUILT-IN - automatic)
                 // Ensure URL has proper format (with port if needed)
+                // IMPORTANT: If WAHA runs in Docker, use host.docker.internal instead of localhost
                 $appUrl = config('app.url', 'http://localhost:8000');
                 
-                // Fix: Always add port 8000 for localhost in development
-                if (str_contains($appUrl, 'localhost')) {
-                    // Check if port is missing
-                    if (!preg_match('/localhost:\d+/', $appUrl)) {
-                        $appUrl = 'http://localhost:8000';
-                    } elseif (!str_contains($appUrl, ':8000') && str_contains($appUrl, 'localhost')) {
-                        // Replace any other port with 8000 for localhost
-                        $appUrl = preg_replace('/localhost:\d+/', 'localhost:8000', $appUrl);
+                // Check if WAHA is running in Docker (check if WAHA_URL contains localhost:3000-3002)
+                $wahaUrl = config('services.waha.url', 'http://localhost:3000');
+                $isWahaInDocker = str_contains($wahaUrl, 'localhost') && 
+                                   (str_contains($wahaUrl, ':3000') || 
+                                    str_contains($wahaUrl, ':3001') || 
+                                    str_contains($wahaUrl, ':3002'));
+                
+                // If WAHA is in Docker and app URL uses localhost, replace with host.docker.internal
+                if ($isWahaInDocker && str_contains($appUrl, 'localhost')) {
+                    // Detect OS: macOS/Windows use host.docker.internal, Linux needs host IP
+                    $os = strtoupper(PHP_OS);
+                    if (str_contains($os, 'DARWIN') || str_contains($os, 'WIN')) {
+                        // macOS or Windows - use host.docker.internal
+                        $appUrl = str_replace('localhost', 'host.docker.internal', $appUrl);
+                        Log::info('WAHA: Using host.docker.internal for webhook (WAHA in Docker)', [
+                            'original_url' => config('app.url', 'http://localhost:8000'),
+                            'webhook_url' => $appUrl,
+                            'os' => $os,
+                        ]);
+                    } else {
+                        // Linux - try to get host IP from environment or use host.docker.internal
+                        $hostIp = env('DOCKER_HOST_IP', 'host.docker.internal');
+                        $appUrl = str_replace('localhost', $hostIp, $appUrl);
+                        Log::info('WAHA: Using host IP for webhook (WAHA in Docker, Linux)', [
+                            'original_url' => config('app.url', 'http://localhost:8000'),
+                            'webhook_url' => $appUrl,
+                            'host_ip' => $hostIp,
+                            'os' => $os,
+                            'note' => 'Set DOCKER_HOST_IP in .env if host.docker.internal does not work',
+                        ]);
+                    }
+                } else {
+                    // Fix: Always add port 8000 for localhost in development
+                    if (str_contains($appUrl, 'localhost')) {
+                        // Check if port is missing
+                        if (!preg_match('/localhost:\d+/', $appUrl)) {
+                            $appUrl = 'http://localhost:8000';
+                        } elseif (!str_contains($appUrl, ':8000') && str_contains($appUrl, 'localhost')) {
+                            // Replace any other port with 8000 for localhost
+                            $appUrl = preg_replace('/localhost:\d+/', 'localhost:8000', $appUrl);
+                        }
                     }
                 }
                 
@@ -183,6 +217,59 @@ class WahaService
                 if ($response->status() >= 400 && $response->status() < 500) {
                     $errorMessage = $response->json()['message'] ?? 'Failed to create session';
                     $responseBody = $response->body();
+                    
+                    // Check if error is about WAHA Core only supporting 'default' session
+                    if ($response->status() === 422 && 
+                        (stripos($errorMessage, 'WAHA Core support only') !== false || 
+                         stripos($errorMessage, 'default session') !== false) &&
+                        $sessionId !== 'default') {
+                        
+                        Log::warning('WAHA Core detected: Retrying with default session name', [
+                            'original_session_id' => $sessionId,
+                            'retry_with' => 'default',
+                            'error' => $errorMessage,
+                        ]);
+                        
+                        // Retry with 'default' session name
+                        $originalSessionId = $sessionId;
+                        $sessionId = 'default';
+                        $payload['name'] = 'default';
+                        $url = "{$this->baseUrl}/api/sessions/start";
+                        
+                        // Update webhook URL to use original session ID for routing
+                        // Rebuild webhook URL with Docker-aware logic
+                        $webhookUrl = $this->buildWebhookUrl($originalSessionId);
+                        $payload['config']['webhooks'][0]['url'] = $webhookUrl;
+                        
+                        Log::info('WAHA: Retrying session creation with default name', [
+                            'original_session_id' => $originalSessionId,
+                            'waha_session_name' => 'default',
+                            'webhook_url' => $webhookUrl,
+                        ]);
+                        
+                        // Retry the request with 'default' session name
+                        $response = $this->httpClient()
+                            ->post($url, $payload);
+                        
+                        if ($response->successful()) {
+                            Log::info('WAHA: Create session success with default name (WAHA Core)', [
+                                'original_session_id' => $originalSessionId,
+                                'waha_session_name' => 'default',
+                                'status' => $response->status(),
+                                'webhook_url' => $webhookUrl,
+                                'note' => 'Using default session name for WAHA Core compatibility',
+                            ]);
+                            return [
+                                'success' => true,
+                                'data' => $response->json(),
+                                'waha_session_name' => 'default', // Return actual WAHA session name
+                                'original_session_id' => $originalSessionId, // Return original for webhook routing
+                            ];
+                        }
+                        
+                        // If retry with default also failed, return error
+                        $errorMessage = $response->json()['message'] ?? 'Failed to create session even with default name';
+                    }
                     
                     Log::error('WAHA create session failed (client error)', [
                         'session_id' => $sessionId,
@@ -266,6 +353,7 @@ class WahaService
             ];
 
             $lastError = null;
+            $isWahaCoreError = false;
             
             foreach ($endpoints as $endpoint) {
                 try {
@@ -331,6 +419,21 @@ class WahaService
                     } else {
                         $errorMsg = $response->json()['message'] ?? "HTTP {$response->status()}";
                         $lastError = $errorMsg;
+                        
+                        // Check if error indicates WAHA Core limitation
+                        if ($response->status() === 422 && 
+                            (stripos($errorMsg, 'WAHA Core support only') !== false || 
+                             stripos($errorMsg, 'default session') !== false) &&
+                            $sessionId !== 'default') {
+                            $isWahaCoreError = true;
+                            Log::warning('WAHA Core detected in QR endpoint: Will retry with default session', [
+                                'endpoint' => $endpoint,
+                                'original_session_id' => $sessionId,
+                                'error' => $errorMsg,
+                            ]);
+                            break; // Break out of endpoint loop to retry with 'default'
+                        }
+                        
                         Log::warning('WAHA: QR endpoint failed', [
                             'endpoint' => $endpoint,
                             'status' => $response->status(),
@@ -347,9 +450,89 @@ class WahaService
                 }
             }
 
+            // If WAHA Core error detected, retry with 'default' session name
+            if ($isWahaCoreError && $sessionId !== 'default') {
+                Log::info('WAHA: Retrying QR code fetch with default session name (WAHA Core)', [
+                    'original_session_id' => $sessionId,
+                    'retry_with' => 'default',
+                ]);
+                
+                // Retry with 'default' session name
+                $defaultEndpoints = [
+                    "{$this->baseUrl}/api/default/auth/qr",
+                    "{$this->baseUrl}/api/sessions/default/auth/qr",
+                    "{$this->baseUrl}/api/sessions/default/qr",
+                ];
+                
+                foreach ($defaultEndpoints as $endpoint) {
+                    try {
+                        Log::debug('WAHA: Trying QR endpoint with default session', ['endpoint' => $endpoint]);
+                        
+                        $response = $this->httpClient()->get($endpoint);
+                        
+                        if ($response->successful()) {
+                            $contentType = $response->header('Content-Type');
+                            
+                            // Check if response is PNG image (direct image response)
+                            if (str_contains($contentType, 'image/png') || str_contains($contentType, 'image/')) {
+                                $imageData = $response->body();
+                                $qrCode = base64_encode($imageData);
+                                
+                                Log::info('WAHA: QR code retrieved successfully with default session (WAHA Core)', [
+                                    'original_session_id' => $sessionId,
+                                    'waha_session_name' => 'default',
+                                    'endpoint' => $endpoint,
+                                    'qr_code_length' => strlen($qrCode),
+                                ]);
+                                
+                                return [
+                                    'success' => true,
+                                    'qr_code' => $qrCode,
+                                    'expires_at' => now()->addMinutes(2),
+                                    'waha_session_name' => 'default', // Indicate we're using default session
+                                ];
+                            }
+                            
+                            // Try JSON response
+                            $data = $response->json();
+                            $qrCode = $data['qr'] ?? $data['qrcode'] ?? $data['qrCode'] ?? null;
+                            
+                            if ($qrCode) {
+                                $qrCode = preg_replace('/^data:image\/[^;]+;base64,/', '', $qrCode);
+                                
+                                Log::info('WAHA: QR code retrieved from JSON with default session (WAHA Core)', [
+                                    'original_session_id' => $sessionId,
+                                    'waha_session_name' => 'default',
+                                    'endpoint' => $endpoint,
+                                    'qr_code_length' => strlen($qrCode),
+                                ]);
+                                
+                                return [
+                                    'success' => true,
+                                    'qr_code' => $qrCode,
+                                    'expires_at' => isset($data['expiresAt']) 
+                                        ? now()->addSeconds($data['expiresAt']) 
+                                        : (isset($data['expires_at']) 
+                                            ? now()->addSeconds($data['expires_at']) 
+                                            : now()->addMinutes(2)),
+                                    'waha_session_name' => 'default',
+                                ];
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('WAHA: QR endpoint exception with default session', [
+                            'endpoint' => $endpoint,
+                            'error' => $e->getMessage(),
+                        ]);
+                        continue;
+                    }
+                }
+            }
+
             Log::error('WAHA: Failed to get QR code from all endpoints', [
                 'session_id' => $sessionId,
                 'last_error' => $lastError,
+                'is_waha_core_error' => $isWahaCoreError,
             ]);
 
             return [
@@ -387,9 +570,41 @@ class WahaService
                 ];
             }
 
+            $errorMessage = $response->json()['message'] ?? 'Failed to get session status';
+            
+            // Check if error indicates WAHA Core limitation
+            if ($response->status() === 422 && 
+                (stripos($errorMessage, 'WAHA Core support only') !== false || 
+                 stripos($errorMessage, 'default session') !== false) &&
+                $sessionId !== 'default') {
+                
+                Log::info('WAHA Core detected in getSessionStatus: Retrying with default session', [
+                    'original_session_id' => $sessionId,
+                ]);
+                
+                // Retry with 'default' session name
+                $response = $this->httpClient()
+                    ->get("{$this->baseUrl}/api/sessions/default");
+                
+                if ($response->successful()) {
+                    $data = $response->json();
+                    Log::info('WAHA: Session status retrieved with default session (WAHA Core)', [
+                        'original_session_id' => $sessionId,
+                        'waha_session_name' => 'default',
+                        'status' => $data['status'] ?? 'unknown',
+                    ]);
+                    return [
+                        'success' => true,
+                        'status' => $data['status'] ?? 'unknown',
+                        'data' => $data,
+                        'waha_session_name' => 'default',
+                    ];
+                }
+            }
+
             return [
                 'success' => false,
-                'error' => $response->json()['message'] ?? 'Failed to get session status',
+                'error' => $errorMessage,
             ];
         } catch (\Exception $e) {
             Log::error('WAHA get session status error: ' . $e->getMessage());
@@ -416,9 +631,38 @@ class WahaService
                 ];
             }
 
+            $errorMessage = $response->json()['message'] ?? 'Failed to stop session';
+            
+            // Check if error indicates WAHA Core limitation
+            if ($response->status() === 422 && 
+                (stripos($errorMessage, 'WAHA Core support only') !== false || 
+                 stripos($errorMessage, 'default session') !== false) &&
+                $sessionId !== 'default') {
+                
+                Log::info('WAHA Core detected in stopSession: Retrying with default session', [
+                    'original_session_id' => $sessionId,
+                ]);
+                
+                // Retry with 'default' session name
+                $response = $this->httpClient()
+                    ->post("{$this->baseUrl}/api/sessions/default/stop");
+                
+                if ($response->successful()) {
+                    Log::info('WAHA: Session stopped with default session (WAHA Core)', [
+                        'original_session_id' => $sessionId,
+                        'waha_session_name' => 'default',
+                    ]);
+                    return [
+                        'success' => true,
+                        'data' => $response->json(),
+                        'waha_session_name' => 'default',
+                    ];
+                }
+            }
+
             return [
                 'success' => false,
-                'error' => $response->json()['message'] ?? 'Failed to stop session',
+                'error' => $errorMessage,
             ];
         } catch (\Exception $e) {
             Log::error('WAHA stop session error: ' . $e->getMessage());
@@ -445,9 +689,38 @@ class WahaService
                 ];
             }
 
+            $errorMessage = $response->json()['message'] ?? 'Failed to delete session';
+            
+            // Check if error indicates WAHA Core limitation
+            if ($response->status() === 422 && 
+                (stripos($errorMessage, 'WAHA Core support only') !== false || 
+                 stripos($errorMessage, 'default session') !== false) &&
+                $sessionId !== 'default') {
+                
+                Log::info('WAHA Core detected in deleteSession: Retrying with default session', [
+                    'original_session_id' => $sessionId,
+                ]);
+                
+                // Retry with 'default' session name
+                $response = $this->httpClient()
+                    ->delete("{$this->baseUrl}/api/sessions/default");
+                
+                if ($response->successful()) {
+                    Log::info('WAHA: Session deleted with default session (WAHA Core)', [
+                        'original_session_id' => $sessionId,
+                        'waha_session_name' => 'default',
+                    ]);
+                    return [
+                        'success' => true,
+                        'data' => $response->json(),
+                        'waha_session_name' => 'default',
+                    ];
+                }
+            }
+
             return [
                 'success' => false,
-                'error' => $response->json()['message'] ?? 'Failed to delete session',
+                'error' => $errorMessage,
             ];
         } catch (\Exception $e) {
             Log::error('WAHA delete session error: ' . $e->getMessage());
@@ -1356,20 +1629,37 @@ class WahaService
     }
 
     /**
-     * Get webhook URL for a session (BUILT-IN webhook)
+     * Build webhook URL for a session (BUILT-IN webhook)
+     * Handles Docker networking automatically
      */
-    public function getWebhookUrl(string $sessionId): string
+    protected function buildWebhookUrl(string $sessionId): string
     {
         $appUrl = config('app.url', 'http://localhost:8000');
         
-        // Fix: Always add port 8000 for localhost in development
-        if (str_contains($appUrl, 'localhost')) {
-            // Check if port is missing
-            if (!preg_match('/localhost:\d+/', $appUrl)) {
-                $appUrl = 'http://localhost:8000';
-            } elseif (!str_contains($appUrl, ':8000') && str_contains($appUrl, 'localhost')) {
-                // Replace any other port with 8000 for localhost
-                $appUrl = preg_replace('/localhost:\d+/', 'localhost:8000', $appUrl);
+        // Check if WAHA is running in Docker
+        $wahaUrl = config('services.waha.url', 'http://localhost:3000');
+        $isWahaInDocker = str_contains($wahaUrl, 'localhost') && 
+                           (str_contains($wahaUrl, ':3000') || 
+                            str_contains($wahaUrl, ':3001') || 
+                            str_contains($wahaUrl, ':3002'));
+        
+        // If WAHA is in Docker and app URL uses localhost, replace with host.docker.internal
+        if ($isWahaInDocker && str_contains($appUrl, 'localhost')) {
+            $os = strtoupper(PHP_OS);
+            if (str_contains($os, 'DARWIN') || str_contains($os, 'WIN')) {
+                $appUrl = str_replace('localhost', 'host.docker.internal', $appUrl);
+            } else {
+                $hostIp = env('DOCKER_HOST_IP', 'host.docker.internal');
+                $appUrl = str_replace('localhost', $hostIp, $appUrl);
+            }
+        } else {
+            // Fix: Always add port 8000 for localhost in development
+            if (str_contains($appUrl, 'localhost')) {
+                if (!preg_match('/localhost:\d+/', $appUrl)) {
+                    $appUrl = 'http://localhost:8000';
+                } elseif (!str_contains($appUrl, ':8000') && str_contains($appUrl, 'localhost')) {
+                    $appUrl = preg_replace('/localhost:\d+/', 'localhost:8000', $appUrl);
+                }
             }
         }
         
@@ -1377,32 +1667,108 @@ class WahaService
     }
 
     /**
+     * Get webhook URL for a session (BUILT-IN webhook)
+     */
+    public function getWebhookUrl(string $sessionId): string
+    {
+        return $this->buildWebhookUrl($sessionId);
+    }
+
+    /**
      * Update webhook configuration for existing session
      * According to WAHA docs: https://waha.devlike.pro/docs/how-to/receive-messages/
-     * Note: WAHA doesn't have a direct update webhook endpoint
-     * This method returns webhook URL that should be configured
+     * WAHA doesn't have a direct update webhook endpoint, so we need to restart session with new config
      */
     public function updateWebhook(string $sessionId): array
     {
         try {
             $webhookUrl = $this->getWebhookUrl($sessionId);
             
-            Log::info('WAHA: Webhook URL for session', [
+            Log::info('WAHA: Updating webhook configuration', [
                 'session_id' => $sessionId,
                 'webhook_url' => $webhookUrl,
                 'app_url' => config('app.url'),
             ]);
             
-            // Return webhook URL info
-            // User needs to restart session or WAHA will use webhook from session config
-            return [
-                'success' => true,
-                'webhook_url' => $webhookUrl,
-                'message' => 'Webhook URL: ' . $webhookUrl . '. Pastikan URL ini dapat diakses dari WAHA server.',
+            // Check if WAHA Core (uses 'default' session)
+            $wahaSessionName = 'default'; // WAHA Core always uses 'default'
+            
+            // Get current session config
+            $getUrl = "{$this->baseUrl}/api/sessions/{$wahaSessionName}";
+            $getResponse = $this->httpClient()->get($getUrl);
+            
+            if (!$getResponse->successful()) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to get session config: ' . $getResponse->body(),
+                ];
+            }
+            
+            $sessionData = $getResponse->json();
+            $currentConfig = $sessionData['config'] ?? [];
+            
+            // Update webhook config
+            $engine = $currentConfig['engine'] ?? env('WAHA_DEFAULT_ENGINE', 'GOWS');
+            $currentConfig['engine'] = $engine;
+            $currentConfig['webhooks'] = [
+                [
+                    'url' => $webhookUrl,
+                    'events' => [
+                        'message',
+                        'message.any',
+                        'message.ack',
+                        'message.reaction',
+                        'message.edited',
+                        'message.revoked',
+                        'session.status',
+                    ],
+                ],
             ];
             
+            // Stop session first
+            $stopUrl = "{$this->baseUrl}/api/sessions/{$wahaSessionName}/stop";
+            $stopResponse = $this->httpClient()->post($stopUrl);
+            
+            if (!$stopResponse->successful()) {
+                Log::warning('WAHA: Failed to stop session before webhook update', [
+                    'status' => $stopResponse->status(),
+                    'body' => $stopResponse->body(),
+                ]);
+            }
+            
+            // Wait a bit for session to stop
+            sleep(1);
+            
+            // Start session with updated config
+            $startUrl = "{$this->baseUrl}/api/sessions/start";
+            $payload = [
+                'name' => $wahaSessionName,
+                'config' => $currentConfig,
+            ];
+            
+            $startResponse = $this->httpClient()->post($startUrl, $payload);
+            
+            if ($startResponse->successful()) {
+                Log::info('WAHA: Webhook updated successfully', [
+                    'session_id' => $sessionId,
+                    'waha_session_name' => $wahaSessionName,
+                    'webhook_url' => $webhookUrl,
+                ]);
+                
+                return [
+                    'success' => true,
+                    'webhook_url' => $webhookUrl,
+                    'message' => 'Webhook berhasil diupdate. Session telah di-restart dengan konfigurasi baru.',
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to restart session: ' . $startResponse->body(),
+                ];
+            }
+            
         } catch (\Exception $e) {
-            Log::error('WAHA get webhook URL error: ' . $e->getMessage(), [
+            Log::error('WAHA update webhook error: ' . $e->getMessage(), [
                 'session_id' => $sessionId,
                 'exception' => $e,
             ]);
@@ -1947,6 +2313,35 @@ class WahaService
 
             $errorData = $response->json();
             $errorMessage = $errorData['message'] ?? 'Failed to get chats';
+            
+            // Check if error indicates WAHA Core limitation
+            if ($response->status() === 422 && 
+                (stripos($errorMessage, 'WAHA Core support only') !== false || 
+                 stripos($errorMessage, 'default session') !== false) &&
+                $sessionId !== 'default') {
+                
+                Log::info('WAHA Core detected in getChats: Retrying with default session', [
+                    'original_session_id' => $sessionId,
+                ]);
+                
+                // Retry with 'default' session name
+                $response = $this->httpClient()
+                    ->get("{$this->baseUrl}/api/default/chats");
+                
+                if ($response->successful()) {
+                    $chats = $response->json();
+                    Log::info('WAHA: getChats success with default session (WAHA Core)', [
+                        'original_session_id' => $sessionId,
+                        'waha_session_name' => 'default',
+                        'chats_count' => is_array($chats) ? count($chats) : 0,
+                    ]);
+                    return [
+                        'success' => true,
+                        'data' => $chats,
+                        'waha_session_name' => 'default',
+                    ];
+                }
+            }
             
             Log::error('WAHA: getChats failed', [
                 'status' => $response->status(),

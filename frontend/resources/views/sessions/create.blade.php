@@ -31,7 +31,7 @@
                                 @enderror
                                 
                                 <small class="form-text text-muted">
-                                    Berikan nama yang mudah diingat untuk session ini.
+                                    Berikan nama yang mudah diingat untuk device ini.
                                 </small>
                             </div>
 
@@ -68,7 +68,7 @@
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle mr-2"></i>
                                 <strong>Catatan:</strong>
-                                Setelah membuat session, Anda perlu memindai QR code dengan WhatsApp untuk menghubungkan session.
+                                Setelah membuat device, Anda perlu memindai QR code dengan WhatsApp untuk menghubungkan device.
                             </div>
                         </div>
 
@@ -79,7 +79,7 @@
                                 <i class="fas fa-arrow-left mr-2"></i>Batal
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus mr-2"></i>Buat Session
+                                <i class="fas fa-plus mr-2"></i>Buat Device
                             </button>
                         </div>
                     </form>
@@ -97,19 +97,19 @@
                     <ul class="list-unstyled mb-0">
                         <li class="mb-3">
                             <i class="fas fa-check-circle text-success mr-2"></i>
-                            <strong>Nama Session:</strong> Gunakan nama yang deskriptif untuk memudahkan identifikasi.
+                            <strong>Nama Device:</strong> Gunakan nama yang deskriptif untuk memudahkan identifikasi.
                         </li>
                         <li class="mb-3">
                             <i class="fas fa-phone text-primary mr-2"></i>
-                            <strong>Nomor Telepon:</strong> Masukkan nomor WhatsApp aktif yang akan digunakan untuk session ini.
+                            <strong>Nomor Telepon:</strong> Masukkan nomor WhatsApp aktif yang akan digunakan untuk device ini.
                         </li>
                         <li class="mb-3">
                             <i class="fas fa-qrcode text-warning mr-2"></i>
-                            <strong>QR Code:</strong> Setelah membuat session, scan QR code yang muncul untuk menghubungkan WhatsApp.
+                            <strong>QR Code:</strong> Setelah membuat device, scan QR code yang muncul untuk menghubungkan WhatsApp.
                         </li>
                         <li class="mb-0">
                             <i class="fas fa-shield-alt text-success mr-2"></i>
-                            <strong>Keamanan:</strong> Setiap session terhubung ke nomor telepon yang berbeda.
+                            <strong>Keamanan:</strong> Setiap device terhubung ke nomor telepon yang berbeda.
                         </li>
                     </ul>
                 </div>
@@ -131,7 +131,7 @@
                         </li>
                         <li class="mb-0">
                             <i class="fas fa-circle text-muted mr-2" style="font-size: 6px;"></i>
-                            Satu nomor telepon hanya bisa digunakan untuk satu session aktif
+                            Satu nomor telepon hanya bisa digunakan untuk satu device aktif
                         </li>
                     </ul>
                 </div>

@@ -23,37 +23,10 @@ class ApiKeyController extends Controller
         
         if (!$apiKey) {
             $apiKey = $this->createApiKey($user, 'My API Key');
-        } else {
-            // Check if plain key exists in session
-            $userApiKeys = session('user_api_keys', []);
-            $plainKey = $userApiKeys[$apiKey->id] ?? null;
-            
-            // Also check flash for backward compatibility
-            if (!$plainKey && session('api_key_plain') && $apiKey->id === session('api_key_id')) {
-                $plainKey = session('api_key_plain');
-            }
-            
-            // If plain key not in session, regenerate to show it
-            if (!$plainKey) {
-                $newKey = Str::random(64);
-                $keyPrefix = substr($newKey, 0, 8);
-                
-                $apiKey->update([
-                    'key' => hash('sha256', $newKey),
-                    'key_prefix' => $keyPrefix,
-                    'last_used_at' => null, // Reset last used
-                ]);
-                
-                // Store the plain key in session permanently
-                $userApiKeys = session('user_api_keys', []);
-                $userApiKeys[$apiKey->id] = $newKey;
-                session(['user_api_keys' => $userApiKeys]);
-                
-                // Also keep flash for backward compatibility
-                session()->flash('api_key_plain', $newKey);
-                session()->flash('api_key_id', $apiKey->id);
-            }
         }
+        // Note: We don't regenerate if plain key is not in session
+        // Plain key is only shown when newly created or regenerated
+        // If user wants to see their key again, they must regenerate it explicitly
         
         return view('api-keys.index', compact('apiKey'));
     }
@@ -61,12 +34,19 @@ class ApiKeyController extends Controller
     public function regenerate()
     {
         $user = Auth::user();
+        
+        // Ensure only the owner can regenerate their API key
         $apiKey = $user->apiKeys()->first();
         
         if (!$apiKey) {
             // Create new if doesn't exist
             $apiKey = $this->createApiKey($user, 'My API Key');
         } else {
+            // Verify ownership before regenerating
+            if ($apiKey->user_id !== $user->id) {
+                abort(403, 'Unauthorized: You can only regenerate your own API key.');
+            }
+            
             // Regenerate existing key
             $newKey = Str::random(64);
             $keyPrefix = substr($newKey, 0, 8);
@@ -87,7 +67,7 @@ class ApiKeyController extends Controller
             session()->flash('api_key_id', $apiKey->id);
         }
         
-        return redirect()->route('api-keys.index');
+        return redirect()->route('api-keys.index')->with('success', 'API key berhasil di-regenerate. Key lama tidak akan berfungsi lagi.');
     }
 
     /**

@@ -11,9 +11,9 @@
                     <h6 class="m-0 font-weight-bold text-primary">
                         <i class="fas fa-key mr-2"></i>API Key
                     </h6>
-                    <form action="{{ route('api-keys.regenerate') }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin regenerate API key? Key lama akan berhenti bekerja segera.');">
+                    <form action="{{ route('api-keys.regenerate') }}" method="POST" class="d-inline" id="regenerateApiKeyForm">
                         @csrf
-                        <button type="submit" class="btn btn-warning btn-sm">
+                        <button type="button" class="btn btn-warning btn-sm" id="regenerateApiKeyBtn">
                             <i class="fas fa-sync-alt mr-2"></i>Regenerate Key
                         </button>
                     </form>
@@ -91,10 +91,19 @@
                                                 Gunakan di Postman: <code>X-Api-Key: [your_key]</code>
                                             </small>
                                         @else
-                                            {{-- This should not happen, but just in case --}}
-                                            <div class="alert alert-warning">
-                                                <i class="fas fa-exclamation-triangle mr-2"></i>
-                                                API key Anda sedang dimuat. Silakan refresh halaman.
+                                            {{-- Plain key not in session - user needs to regenerate to see it --}}
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle mr-2"></i>
+                                                <strong>API Key Anda sudah dibuat.</strong><br>
+                                                <small>Untuk melihat API key lengkap, silakan klik tombol "Regenerate Key" di atas. 
+                                                Key yang sudah ada akan tetap berfungsi sampai Anda regenerate.</small>
+                                            </div>
+                                            <div class="card border-left-secondary mt-3">
+                                                <div class="card-body">
+                                                    <div class="small text-gray-500 mb-1">Key Prefix</div>
+                                                    <div class="font-monospace font-weight-bold">{{ $apiKey->key_prefix }}...</div>
+                                                    <small class="text-muted">Gunakan prefix ini untuk mengidentifikasi key Anda</small>
+                                                </div>
                                             </div>
                                         @endif
                                     </div>
@@ -119,12 +128,33 @@
                                             </div>
                                             <div class="col-md-6 mb-3">
                                                 <div class="small text-gray-500 mb-1">Dibuat</div>
-                                                <div class="font-weight-bold">{{ $apiKey->created_at->format('d F Y') }}</div>
+                                                <div class="font-weight-bold">{{ $apiKey->created_at->format('d F Y, H:i') }}</div>
+                                                <small class="text-muted">{{ $apiKey->created_at->diffForHumans() }}</small>
                                             </div>
                                             <div class="col-md-6 mb-3">
-                                                <div class="small text-gray-500 mb-1">Terakhir Digunakan</div>
+                                                <div class="small text-gray-500 mb-1">
+                                                    <i class="fas fa-check-circle mr-1"></i>Terakhir Digunakan
+                                                </div>
                                                 <div class="font-weight-bold">
                                                     {{ $apiKey->last_used_at ? $apiKey->last_used_at->diffForHumans() : 'Belum pernah' }}
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <div class="small text-gray-500 mb-1">
+                                                    <i class="fas fa-history mr-1"></i>Terakhir Diubah
+                                                </div>
+                                                <div class="font-weight-bold">
+                                                    @if($apiKey->updated_at && $apiKey->updated_at->ne($apiKey->created_at))
+                                                        {{ $apiKey->updated_at->format('d F Y, H:i') }}
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-clock mr-1"></i>{{ $apiKey->updated_at->diffForHumans() }}
+                                                        </small>
+                                                    @else
+                                                        <span class="text-muted">
+                                                            <i class="fas fa-info-circle mr-1"></i>Belum pernah diubah
+                                                        </span>
+                                                    @endif
                                                 </div>
                                             </div>
                                             @if($apiKey->expires_at)
@@ -181,8 +211,72 @@
 </div>
 @endsection
 
+@push('styles')
+<!-- SweetAlert2 CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+@endpush
+
 @push('scripts')
+<!-- SweetAlert2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+/**
+ * Handle API key regeneration with SweetAlert confirmation
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    const regenerateBtn = document.getElementById('regenerateApiKeyBtn');
+    const regenerateForm = document.getElementById('regenerateApiKeyForm');
+    
+    if (regenerateBtn && regenerateForm) {
+        regenerateBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                title: 'Regenerate API Key?',
+                html: '<div class="text-left">' +
+                      '<p class="mb-2">Apakah Anda yakin ingin regenerate API key?</p>' +
+                      '<div class="alert alert-warning text-left mb-0">' +
+                      '<i class="fas fa-exclamation-triangle"></i> <strong>Peringatan:</strong><br>' +
+                      '<ul class="mb-0 mt-2 pl-3">' +
+                      '<li>API key lama akan berhenti bekerja segera</li>' +
+                      '<li>Semua aplikasi yang menggunakan key lama akan gagal</li>' +
+                      '<li>Anda perlu mengupdate key di semua tempat yang menggunakannya</li>' +
+                      '</ul>' +
+                      '</div>' +
+                      '</div>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f6c23e',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-sync-alt mr-2"></i>Ya, Regenerate',
+                cancelButtonText: '<i class="fas fa-times mr-2"></i>Batal',
+                reverseButtons: true,
+                focusCancel: true,
+                customClass: {
+                    popup: 'text-left'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading state
+                    Swal.fire({
+                        title: 'Memproses...',
+                        text: 'Sedang regenerate API key',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Submit the form
+                    regenerateForm.submit();
+                }
+            });
+        });
+    }
+});
+
 /**
  * Toggle API key visibility
  */

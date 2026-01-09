@@ -100,12 +100,18 @@ class SessionController extends Controller
         if (!$sessionExistsInWaha || !in_array($wahaStatus, ['SCAN_QR_CODE', 'WORKING', 'STARTING'])) {
             $wahaResult = $this->wahaService->createSession($sessionId);
             
+            // Check if WAHA Core was used (fallback to 'default')
+            $wahaSessionName = $wahaResult['waha_session_name'] ?? $sessionId;
+            $actualSessionId = $wahaResult['original_session_id'] ?? $sessionId;
+            
             if (!$wahaResult['success']) {
                 $errorMsg = $wahaResult['error'] ?? '';
                 // Handle "already exists" gracefully
                 if (str_contains($errorMsg, 'already started') || str_contains($errorMsg, 'already exists')) {
                     \Log::info('SessionController: Session already exists, rechecking status');
-                    $statusResult = $this->wahaService->getSessionStatus($sessionId);
+                    // Check status using actual WAHA session name (might be 'default')
+                    $checkSessionId = $wahaSessionName === 'default' ? 'default' : $sessionId;
+                    $statusResult = $this->wahaService->getSessionStatus($checkSessionId);
                     $wahaStatus = $statusResult['status'] ?? 'unknown';
                 } else {
                     \Log::error('SessionController: Failed to create session', [
@@ -115,7 +121,16 @@ class SessionController extends Controller
                 }
             } else {
                 // Optimized: Poll for status instead of fixed sleep
-                $wahaStatus = $this->waitForSessionStatus($sessionId, ['STARTING', 'SCAN_QR_CODE', 'WORKING'], 3);
+                // Use actual WAHA session name for status check (might be 'default' for WAHA Core)
+                $checkSessionId = $wahaSessionName === 'default' ? 'default' : $sessionId;
+                $wahaStatus = $this->waitForSessionStatus($checkSessionId, ['STARTING', 'SCAN_QR_CODE', 'WORKING'], 3);
+                
+                if ($wahaSessionName === 'default') {
+                    \Log::info('SessionController: Using WAHA Core with default session', [
+                        'database_session_id' => $sessionId,
+                        'waha_session_name' => 'default',
+                    ]);
+                }
             }
         }
         

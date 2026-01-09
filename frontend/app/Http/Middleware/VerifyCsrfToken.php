@@ -18,5 +18,26 @@ class VerifyCsrfToken extends Middleware
         'webhook/wacloud',
         'webhook/wacloud/*',
     ];
+
+    /**
+     * Determine if the request should be excluded from CSRF verification.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return bool
+     */
+    protected function inExceptArray($request)
+    {
+        foreach ($this->except as $except) {
+            if ($except !== '/') {
+                $except = trim($except, '/');
+            }
+
+            if ($request->is($except)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
 

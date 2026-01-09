@@ -132,12 +132,19 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// Webhook receiver (public endpoint)
-Route::post('/webhook/receive/{session}', [App\Http\Controllers\WebhookController::class, 'receive'])->name('webhook.receive');
+// Webhook receiver (public endpoint - excluded from CSRF protection)
+// These routes are excluded in app/Http/Middleware/VerifyCsrfToken.php
+Route::post('/webhook/receive/{session}', [App\Http\Controllers\WebhookController::class, 'receive'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+    ->name('webhook.receive');
 
-// WACloud webhook (public endpoint)
-Route::post('/webhook/wacloud', [App\Http\Controllers\WebhookController::class, 'wacloud'])->name('webhook.wacloud');
+// WACloud webhook (public endpoint - excluded from CSRF protection)
+Route::post('/webhook/wacloud', [App\Http\Controllers\WebhookController::class, 'wacloud'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+    ->name('webhook.wacloud');
 
-// Xendit webhook (public endpoint)
-Route::post('/webhook/xendit', [App\Http\Controllers\QuotaController::class, 'webhook'])->name('webhook.xendit');
+// Xendit webhook (public endpoint - excluded from CSRF protection)
+Route::post('/webhook/xendit', [App\Http\Controllers\QuotaController::class, 'webhook'])
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
+    ->name('webhook.xendit');
 
