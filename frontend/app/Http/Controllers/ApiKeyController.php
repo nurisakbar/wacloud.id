@@ -48,7 +48,7 @@ class ApiKeyController extends Controller
             }
             
             // Regenerate existing key
-            $newKey = Str::random(64);
+            $newKey = $this->generateApiKey();
             $keyPrefix = substr($newKey, 0, 8);
             
             $apiKey->update([
@@ -71,11 +71,21 @@ class ApiKeyController extends Controller
     }
 
     /**
+     * Generate a new API key
+     * Format: 64 random characters
+     */
+    private function generateApiKey(): string
+    {
+        return Str::random(64);
+    }
+
+    /**
      * Create a new API key for the user
      */
     private function createApiKey($user, $name = 'My API Key')
     {
-        $key = Str::random(64);
+        // Generate API key
+        $key = $this->generateApiKey();
         $keyPrefix = substr($key, 0, 8);
 
         $apiKey = ApiKey::create([

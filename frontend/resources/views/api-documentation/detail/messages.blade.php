@@ -24,7 +24,7 @@
                 </div>
                 <div id="send-message-curl" class="code-tab-content active">
                     <div class="api-code mb-0"><code>curl -X POST "{{ $baseUrl }}/api/v1/messages" \
-  -H "X-Api-Key: YOUR_API_KEY" \
+  -H "X-Api-Key: waha_your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
     "device_id": "abc123def456",
@@ -35,7 +35,7 @@
                 </div>
                 <div id="send-message-php" class="code-tab-content">
                     <div class="api-code mb-0"><code>&lt;?php
-$apiKey = 'YOUR_API_KEY';
+$apiKey = 'waha_your_api_key_here';
 $url = '{{ $baseUrl }}/api/v1/messages';
 
 $data = [

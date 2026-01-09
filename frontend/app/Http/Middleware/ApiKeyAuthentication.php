@@ -44,19 +44,18 @@ class ApiKeyAuthentication
                 \Log::warning('Invalid API key attempt', [
                     'provided_key_length' => strlen($apiKey),
                     'provided_key_prefix' => substr($apiKey, 0, 10),
-                    'provided_key_starts_with_waha' => str_starts_with($apiKey, 'waha_'),
                     'hashed_key' => $hashedKey,
                 ]);
             }
             
             // Check if user might be sending hash instead of plain key
             $isHashFormat = (strlen($apiKey) === 64 && ctype_xdigit($apiKey));
-            $errorMessage = 'The provided API key is invalid or inactive.';
             
+            // Provide helpful error message based on format
             if ($isHashFormat) {
-                $errorMessage .= ' It looks like you are sending a hash. Please use the plain API key (starts with "waha_") from the API Keys page.';
+                $errorMessage = 'The provided API key is invalid or inactive. It looks like you are sending a hash. Please use the plain API key that was shown when you created it in the API Keys page.';
             } else {
-                $errorMessage .= ' Make sure you are using the full API key (starts with "waha_") that was shown when you created it in the API Keys page.';
+                $errorMessage = 'The provided API key is invalid or inactive. Make sure you are using the full API key that was shown when you created it in the API Keys page.';
             }
             
             return response()->json([

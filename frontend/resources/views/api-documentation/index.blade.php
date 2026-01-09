@@ -110,8 +110,13 @@
                     <div class="api-code mb-3"><code>{{ $baseUrl }}/api/v1</code></div>
 
                     <p class="mb-1"><strong>{{ __('Autentikasi') }}</strong></p>
-                    <p class="mb-0">
+                    <p class="mb-2">
                         {{ __('Setiap request memerlukan API Key yang dapat Anda buat di menu "API Keys".') }}
+                    </p>
+                    <p class="mb-0 small text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        {{ __('Format API Key:') }} <code>waha_</code> + 59 karakter random (total 64 karakter). 
+                        {{ __('Gunakan API Key lengkap di header') }} <code>X-Api-Key</code>.
                     </p>
                 </div>
             </div>

@@ -94,6 +94,20 @@
                 </a>
             </div>
 
+            <!-- API Key Format Notice -->
+            <div class="alert alert-info mb-4">
+                <h6 class="alert-heading">
+                    <i class="fas fa-key"></i> {{ __('Format API Key') }}
+                </h6>
+                <p class="mb-2">
+                    {{ __('Semua contoh di bawah menggunakan placeholder') }} <code>YOUR_API_KEY</code> {{ __('atau') }} <code>waha_your_api_key_here</code>.
+                </p>
+                <p class="mb-0">
+                    <strong>{{ __('Format API Key yang benar:') }}</strong> <code>waha_</code> + 59 karakter random (total 64 karakter).
+                    {{ __('Dapatkan API Key Anda di menu') }} <a href="{{ route('api-keys.index') }}" class="alert-link">{{ __('API Keys') }}</a>.
+                </p>
+            </div>
+
             <!-- Module Content -->
             @include('api-documentation.detail.' . $module, ['baseUrl' => $baseUrl, 'apiKeys' => $apiKeys])
         </div>

@@ -94,7 +94,8 @@
                                             <div class="mt-2 p-2 bg-light rounded">
                                                 <small class="text-success">
                                                     <i class="fas fa-check-circle mr-1"></i>
-                                                    <strong>Verifikasi:</strong> API key yang ditampilkan adalah plain key yang benar dan bisa langsung digunakan. 
+                                                        <strong>Verifikasi:</strong> API key yang ditampilkan adalah plain key yang benar dan bisa langsung digunakan. 
+                                                    Format API key dimulai dengan <code>waha_</code> diikuti 59 karakter random (total 64 karakter). 
                                                     Pastikan Anda copy seluruh key tanpa menambah atau mengurangi karakter apapun.
                                                 </small>
                                             </div>
@@ -195,7 +196,8 @@
                                         <div class="alert alert-info mt-3 mb-0">
                                             <strong><i class="fas fa-check-circle mr-2"></i>Penting:</strong> 
                                             API key yang ditampilkan di atas adalah <strong>plain key yang siap digunakan langsung</strong>. 
-                                            Copy seluruh key (64 karakter) dan gunakan di header <code>X-Api-Key</code> tanpa modifikasi apapun.
+                                            Format API key: <code>waha_</code> + 59 karakter random (total 64 karakter). 
+                                            Copy seluruh key dan gunakan di header <code>X-Api-Key</code> tanpa modifikasi apapun.
                                         </div>
                                         <hr>
                                         <div class="small text-muted">
