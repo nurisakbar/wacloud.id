@@ -2358,24 +2358,26 @@ class WahaService
             }
 
             $errorData = $response->json();
-            $errorMessage = $errorData['message'] ?? 'Failed to get chats';
+            $errorMessage = $errorData['message'] ?? $errorData['error'] ?? 'Failed to get chats';
             
-            // Check if error indicates WAHA Core limitation
-            if ($response->status() === 422 && 
+            // Check if error indicates WAHA Core limitation (422 or 400 status)
+            if (($response->status() === 422 || $response->status() === 400) && 
                 (stripos($errorMessage, 'WAHA Core support only') !== false || 
                  stripos($errorMessage, 'default session') !== false) &&
                 $sessionId !== 'default') {
                 
                 Log::info('WAHA Core detected in getChats: Retrying with default session', [
                     'original_session_id' => $sessionId,
+                    'original_status' => $response->status(),
+                    'original_error' => $errorMessage,
                 ]);
                 
                 // Retry with 'default' session name
-                $response = $this->httpClient()
+                $retryResponse = $this->httpClient()
                     ->get("{$this->baseUrl}/api/default/chats");
                 
-                if ($response->successful()) {
-                    $chats = $response->json();
+                if ($retryResponse->successful()) {
+                    $chats = $retryResponse->json();
                     Log::info('WAHA: getChats success with default session (WAHA Core)', [
                         'original_session_id' => $sessionId,
                         'waha_session_name' => 'default',
@@ -2386,6 +2388,17 @@ class WahaService
                         'data' => $chats,
                         'waha_session_name' => 'default',
                     ];
+                } else {
+                    // Retry also failed, log the error
+                    $retryErrorData = $retryResponse->json();
+                    $retryErrorMessage = $retryErrorData['message'] ?? $retryErrorData['error'] ?? 'Failed to get chats with default session';
+                    Log::warning('WAHA: getChats retry with default session also failed', [
+                        'original_session_id' => $sessionId,
+                        'retry_status' => $retryResponse->status(),
+                        'retry_error' => $retryErrorMessage,
+                    ]);
+                    // Update error message to reflect retry failure
+                    $errorMessage = $retryErrorMessage;
                 }
             }
             

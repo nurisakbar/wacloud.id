@@ -306,6 +306,16 @@ class WebhookController extends Controller
 
         $event = $request->input('event');
         $payload = $request->input('payload', []);
+        
+        // Log webhook receipt for debugging
+        Log::debug('Webhook: Received event', [
+            'session_id' => $sessionId,
+            'session_db_id' => $session->id,
+            'session_name' => $session->session_name,
+            'session_phone' => $session->phone_number,
+            'event' => $event,
+            'user_id' => $session->user_id,
+        ]);
 
         // ============================================
         // BUILT-IN WEBHOOK: Auto-save messages to database
@@ -440,6 +450,17 @@ class WebhookController extends Controller
                 if (!$fromNumber && $sessionPhoneNumber) {
                     $fromNumber = $sessionPhoneNumber;
                 }
+                
+                // Validate: For outgoing messages, from_number must match session's phone number
+                if ($sessionPhoneNumber && $fromNumber && $fromNumber !== $sessionPhoneNumber) {
+                    Log::warning('Webhook: Message rejected - from_number does not match session', [
+                        'session_id' => $session->session_id,
+                        'session_phone' => $sessionPhoneNumber,
+                        'message_from' => $fromNumber,
+                        'whatsapp_message_id' => $whatsappMessageId,
+                    ]);
+                    return; // Reject message - not for this session
+                }
             } else {
                 // Incoming message: to_number should be session's phone number
                 if (!$toNumber && $sessionPhoneNumber) {
@@ -448,6 +469,18 @@ class WebhookController extends Controller
                 // Also try to extract from _data if available (might contain recipient info)
                 if (!$toNumber && !empty($payload['_data']['key']['remoteJidAlt'])) {
                     $toNumber = $this->extractPhoneNumber($payload['_data']['key']['remoteJidAlt']);
+                }
+                
+                // Validate: For incoming messages, to_number must match session's phone number
+                if ($sessionPhoneNumber && $toNumber && $toNumber !== $sessionPhoneNumber) {
+                    Log::warning('Webhook: Message rejected - to_number does not match session', [
+                        'session_id' => $session->session_id,
+                        'session_phone' => $sessionPhoneNumber,
+                        'message_to' => $toNumber,
+                        'whatsapp_message_id' => $whatsappMessageId,
+                        'from_number' => $fromNumber,
+                    ]);
+                    return; // Reject message - not for this session
                 }
             }
 
