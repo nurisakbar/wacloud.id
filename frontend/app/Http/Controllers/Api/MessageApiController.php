@@ -89,13 +89,13 @@ class MessageApiController extends Controller
             // For groups, we don't normalize as phone number
             $normalizedNumber = $toValue;
         } else {
-            // For personal chat, normalize phone number
-            $normalizedNumber = PhoneNumberHelper::normalize($request->to);
+            // For personal chat, normalize phone number (without + for chatId)
+            $normalizedNumber = PhoneNumberHelper::normalizeForChatId($request->to);
             if (!$normalizedNumber) {
                 $this->usageService->log($request, 400, $startTime);
                 return response()->json([
                     'success' => false,
-                    'error' => 'Invalid phone number format',
+                    'error' => 'Invalid phone number format. Accepted formats: +62 813-9577-7706, 62 813-9577-7706, or 081395777706',
                 ], 400);
             }
             

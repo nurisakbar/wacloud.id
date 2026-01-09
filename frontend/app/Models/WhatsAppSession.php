@@ -86,6 +86,14 @@ class WhatsAppSession extends Model
     }
 
     /**
+     * Get the webhooks for this session.
+     */
+    public function webhooks(): HasMany
+    {
+        return $this->hasMany(Webhook::class, 'session_id');
+    }
+
+    /**
      * Check if session is connected.
      */
     public function isConnected(): bool

@@ -54,29 +54,29 @@
                                         @endphp
                                         
                                         @if($plainKey)
-                                            {{-- Show masked key with show/hide toggle --}}
+                                            {{-- Show full API key by default, can be toggled to hide --}}
                                             @php
+                                                // Ensure plain key is trimmed and clean
+                                                $plainKey = trim($plainKey);
                                                 $keyLength = strlen($plainKey);
-                                                $showChars = 8; // Show first and last 8 characters
-                                                $maskedKey = substr($plainKey, 0, $showChars) . str_repeat('•', max(0, $keyLength - ($showChars * 2))) . substr($plainKey, -$showChars);
                                             @endphp
                                             <div class="input-group mb-3">
                                                 <input type="text" 
                                                        class="form-control font-monospace" 
                                                        id="apiKeyDisplay" 
-                                                       value="{{ $maskedKey }}" 
+                                                       value="{{ $plainKey }}" 
                                                        data-full-key="{{ $plainKey }}"
-                                                       data-masked-key="{{ $maskedKey }}"
-                                                       data-is-masked="true"
                                                        readonly 
-                                                       style="font-size: 14px; letter-spacing: 1px;">
+                                                       onclick="this.select(); document.execCommand('copy');"
+                                                       style="font-size: 14px; letter-spacing: 1px; cursor: pointer;"
+                                                       title="Klik untuk select dan copy ({{ $keyLength }} karakter)">
                                                 <div class="input-group-append">
                                                     <button class="btn btn-outline-secondary" 
                                                             type="button" 
                                                             id="toggleApiKey" 
                                                             onclick="toggleApiKeyVisibility()"
-                                                            title="Tampilkan/Sembunyikan API Key">
-                                                        <i class="fas fa-eye" id="toggleIcon"></i>
+                                                            title="Sembunyikan/Tampilkan API Key">
+                                                        <i class="fas fa-eye-slash" id="toggleIcon"></i>
                                                     </button>
                                                     <button class="btn btn-primary" 
                                                             type="button" 
@@ -88,8 +88,16 @@
                                             </div>
                                             <small class="text-muted">
                                                 <i class="fas fa-lightbulb mr-1"></i>
-                                                Gunakan di Postman: <code>X-Api-Key: [your_key]</code>
+                                                Klik pada text box untuk select dan copy, atau gunakan tombol Salin. 
+                                                <strong>API key ini ({{ $keyLength }} karakter) siap digunakan langsung</strong> di header <code>X-Api-Key</code> untuk semua request API.
                                             </small>
+                                            <div class="mt-2 p-2 bg-light rounded">
+                                                <small class="text-success">
+                                                    <i class="fas fa-check-circle mr-1"></i>
+                                                    <strong>Verifikasi:</strong> API key yang ditampilkan adalah plain key yang benar dan bisa langsung digunakan. 
+                                                    Pastikan Anda copy seluruh key tanpa menambah atau mengurangi karakter apapun.
+                                                </small>
+                                            </div>
                                         @else
                                             {{-- Plain key not in session - user needs to regenerate to see it --}}
                                             <div class="alert alert-info">
@@ -176,14 +184,19 @@
                                             <i class="fas fa-book text-success mr-2"></i>Cara Menggunakan
                                         </h6>
                                         <ol class="pl-3">
-                                            <li class="mb-2">Salin API key Anda dari atas</li>
-                                            <li class="mb-2">Tambahkan ke header request Anda:<br>
-                                                <code class="small">X-Api-Key: your_key</code>
+                                            <li class="mb-2">Salin API key lengkap dari text box di atas (klik text box atau tombol Salin)</li>
+                                            <li class="mb-2">Tambahkan ke header HTTP request Anda:<br>
+                                                <code class="small">X-Api-Key: [paste_api_key_di_sini]</code>
                                             </li>
                                             <li class="mb-2">Lakukan request API ke:<br>
                                                 <code class="small">{{ config('app.url', 'http://localhost:8000') }}/api/v1/*</code>
                                             </li>
                                         </ol>
+                                        <div class="alert alert-info mt-3 mb-0">
+                                            <strong><i class="fas fa-check-circle mr-2"></i>Penting:</strong> 
+                                            API key yang ditampilkan di atas adalah <strong>plain key yang siap digunakan langsung</strong>. 
+                                            Copy seluruh key (64 karakter) dan gunakan di header <code>X-Api-Key</code> tanpa modifikasi apapun.
+                                        </div>
                                         <hr>
                                         <div class="small text-muted">
                                             <i class="fas fa-shield-alt mr-1"></i>
@@ -287,26 +300,31 @@ function toggleApiKeyVisibility() {
     
     if (input) {
         const fullKey = input.getAttribute('data-full-key');
-        const maskedKey = input.getAttribute('data-masked-key');
-        const isMasked = input.getAttribute('data-is-masked') === 'true';
+        const currentValue = input.value;
+        const isMasked = currentValue.includes('•') || currentValue.length < fullKey.length;
         
         if (isMasked) {
             // Show full key
             input.value = fullKey;
-            input.setAttribute('data-is-masked', 'false');
+            input.type = 'text';
             toggleIcon.classList.remove('fa-eye');
             toggleIcon.classList.add('fa-eye-slash');
             toggleBtn.classList.remove('btn-outline-secondary');
             toggleBtn.classList.add('btn-secondary');
+            toggleBtn.title = 'Sembunyikan API Key';
             input.style.color = '#28a745'; // Green color when shown
         } else {
             // Hide key (mask it)
+            const keyLength = fullKey.length;
+            const showChars = 8; // Show first and last 8 characters
+            const maskedKey = fullKey.substring(0, showChars) + '•'.repeat(Math.max(0, keyLength - (showChars * 2))) + fullKey.substring(keyLength - showChars);
             input.value = maskedKey;
-            input.setAttribute('data-is-masked', 'true');
+            input.type = 'password'; // Use password type to prevent easy copy
             toggleIcon.classList.remove('fa-eye-slash');
             toggleIcon.classList.add('fa-eye');
             toggleBtn.classList.remove('btn-secondary');
             toggleBtn.classList.add('btn-outline-secondary');
+            toggleBtn.title = 'Tampilkan API Key';
             input.style.color = ''; // Reset color
         }
     }
@@ -319,7 +337,9 @@ function copyApiKey(inputId, button) {
     const input = document.getElementById(inputId);
     if (input) {
         // Always copy the full key from data attribute or value
-        const fullKey = input.getAttribute('data-full-key') || input.value;
+        // Trim to remove any whitespace that might have been added
+        let fullKey = input.getAttribute('data-full-key') || input.value;
+        fullKey = fullKey.trim(); // Remove any leading/trailing whitespace
         copyText(fullKey, button);
     }
 }
@@ -328,6 +348,9 @@ function copyApiKey(inputId, button) {
  * Copy text to clipboard (general purpose)
  */
 function copyText(text, button) {
+    // Trim whitespace to ensure clean copy
+    text = text.trim();
+    
     // Use modern Clipboard API if available
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(function() {

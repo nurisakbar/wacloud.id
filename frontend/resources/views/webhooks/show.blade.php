@@ -144,12 +144,12 @@
                                             <td>
                                                 @if($webhook->session)
                                                     <div class="d-flex align-items-center gap-2 mb-2">
-                                                        <span class="badge bg-info px-3 py-2 fs-6">
+                                                        <span class="badge bg-info text-white px-3 py-2 fs-6">
                                                             <i class="fas fa-mobile-alt me-1"></i> 
                                                             <strong>{{ $webhook->session->session_name }}</strong>
                                                         </span>
                                                         @if($webhook->session->status === 'connected')
-                                                            <span class="badge bg-success">
+                                                            <span class="badge bg-success text-white">
                                                                 <i class="fas fa-check-circle"></i> Connected
                                                             </span>
                                                         @elseif($webhook->session->status === 'pairing')
@@ -157,7 +157,7 @@
                                                                 <i class="fas fa-qrcode"></i> Pairing
                                                             </span>
                                                         @else
-                                                            <span class="badge bg-secondary">
+                                                            <span class="badge bg-secondary text-white">
                                                                 <i class="fas fa-times-circle"></i> Disconnected
                                                             </span>
                                                         @endif

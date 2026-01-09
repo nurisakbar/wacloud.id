@@ -95,7 +95,7 @@
                                                         <i class="fas fa-check-circle"></i> Terhubung
                                                     </span>
                                                 @elseif ($session->status === 'pairing')
-                                                    <span class="badge bg-warning fs-6">
+                                                    <span class="badge bg-warning text-dark fs-6">
                                                         <i class="fas fa-qrcode"></i> Pairing
                                                     </span>
                                                 @elseif ($session->status === 'disconnected')

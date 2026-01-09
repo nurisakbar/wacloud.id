@@ -686,11 +686,24 @@ class MessageController extends Controller
             $rules['document_url'] = 'required_without:document_file|nullable|url|max:2048';
         }
 
-        $request->validate($rules);
-
         // Determine chat type (personal or group)
         $chatType = $request->input('chat_type', 'personal'); // Default to personal
         
+        // Add conditional validation for personal chat phone number
+        if ($chatType === 'personal') {
+            $request->validate(array_merge($rules, [
+                'to_number' => [
+                    'required',
+                    'string',
+                    'regex:/^08[0-9]{8,11}$/',
+                ],
+            ]), [
+                'to_number.regex' => 'Format nomor telepon tidak valid. Gunakan format: 081395777706 (10-13 digit, dimulai dengan 08).',
+            ]);
+        } else {
+            $request->validate($rules);
+        }
+
         // Handle chat ID based on type
         if ($chatType === 'group') {
             // For group, the 'to_number' field should be the group ID
@@ -708,12 +721,16 @@ class MessageController extends Controller
             $normalizedNumber = $toValue;
         } else {
             // For personal chat, normalize phone number
-            $normalizedNumber = PhoneNumberHelper::normalize($request->to_number);
-            if (!$normalizedNumber) {
-                return back()->withErrors(['to_number' => 'Invalid phone number format. Please use 08xxxxxxxxxx or 628xxxxxxxxxx']);
+            // Convert 081395777706 -> +6281395777706 (for database)
+            $normalizedNumberForDb = PhoneNumberHelper::normalize($request->to_number);
+            if (!$normalizedNumberForDb) {
+                return back()->withErrors(['to_number' => 'Format nomor telepon tidak valid. Gunakan format: 081395777706']);
             }
             
-            $chatId = $normalizedNumber . '@c.us';
+            // Convert 081395777706 -> 6281395777706 (for WAHA chatId, without +)
+            // WAHA requires chatId format: 6281395777706@c.us (without +)
+            $normalizedNumberForChatId = PhoneNumberHelper::normalizeForChatId($request->to_number);
+            $chatId = $normalizedNumberForChatId . '@c.us';
         }
 
         $session = WhatsAppSession::where('user_id', Auth::id())
@@ -738,7 +755,7 @@ class MessageController extends Controller
             'user_id' => Auth::id(),
             'session_id' => $session->id,
             'from_number' => $fromNumber,
-            'to_number' => $normalizedNumber,
+            'to_number' => $chatType === 'personal' ? $normalizedNumberForDb : $normalizedNumber,
             'chat_type' => $chatType,
             'message_type' => $request->message_type,
             'direction' => 'outgoing',
@@ -909,22 +926,32 @@ class MessageController extends Controller
                 $phoneNumber = trim($row[$phoneColumnIndex]);
                 $messageContent = trim($row[$messageColumnIndex]);
 
-                // Normalize phone number
-                $normalizedNumber = PhoneNumberHelper::normalize($phoneNumber);
-                if (!$normalizedNumber) {
+                // Validate phone number format (must be 08xxxxxxxxxx)
+                if (!preg_match('/^08[0-9]{8,11}$/', $phoneNumber)) {
+                    $results['failed']++;
+                    $results['errors'][] = "Row " . ($rowIndex + 2) . ": Invalid phone number format: " . $phoneNumber . " (Use format: 081395777706)";
+                    continue;
+                }
+
+                // Normalize phone number for database (convert 081395777706 to +6281395777706)
+                $normalizedNumberForDb = PhoneNumberHelper::normalize($phoneNumber);
+                if (!$normalizedNumberForDb) {
                     $results['failed']++;
                     $results['errors'][] = "Row " . ($rowIndex + 2) . ": Invalid phone number format: " . $phoneNumber;
                     continue;
                 }
 
-                $chatId = $normalizedNumber . '@c.us';
+                // Normalize phone number for chatId (convert 081395777706 to 6281395777706 for WAHA)
+                // WAHA requires format: 6281395777706@c.us (without +)
+                $normalizedNumberForChatId = PhoneNumberHelper::normalizeForChatId($phoneNumber);
+                $chatId = $normalizedNumberForChatId . '@c.us';
 
                 // Prepare message data
                 $messageData = [
                     'user_id' => Auth::id(),
                     'session_id' => $session->id,
                     'from_number' => $fromNumber,
-                    'to_number' => $normalizedNumber,
+                    'to_number' => $normalizedNumberForDb,
                     'chat_type' => 'personal',
                     'message_type' => 'text',
                     'content' => $messageContent,

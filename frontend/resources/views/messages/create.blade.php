@@ -50,27 +50,24 @@
 
                         <div class="mb-3">
                             <label for="to_number" class="form-label">{{ __('Phone Number') }} <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text">+62</span>
-                                </div>
-                                <input type="text" 
-                                       class="form-control @error('to_number') is-invalid @enderror" 
-                                       id="to_number" 
-                                       name="to_number" 
-                                       value="{{ old('to_number', request('to_number')) }}" 
-                                       required 
-                                       placeholder="81234567890"
-                                       pattern="[0-9]{9,13}"
-                                       maxlength="13">
-                            </div>
+                            <input type="text" 
+                                   class="form-control @error('to_number') is-invalid @enderror" 
+                                   id="to_number" 
+                                   name="to_number" 
+                                   value="{{ old('to_number', request('to_number')) }}" 
+                                   required 
+                                   placeholder="081395777706"
+                                   pattern="^08[0-9]{8,11}$"
+                                   maxlength="13"
+                                   autocomplete="tel"
+                                   inputmode="numeric">
                             @error('to_number')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
                                 </span>
                             @enderror
                             <small class="form-text text-muted">
-                                {{ __('Masukkan nomor tanpa angka 0 di depan. Contoh: 81234567890') }}
+                                {{ __('Masukkan nomor telepon dengan format: 081395777706 (10-13 digit, dimulai dengan 08). Format lain tidak diterima.') }}
                             </small>
                         </div>
 
@@ -189,15 +186,18 @@
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td>081234567890</td>
+                                                <td>081395777706</td>
                                                 <td>Halo, ini pesan pertama</td>
                                             </tr>
                                             <tr>
-                                                <td>6281234567890</td>
+                                                <td>081234567890</td>
                                                 <td>Halo, ini pesan kedua</td>
                                             </tr>
                                         </tbody>
                                     </table>
+                                    <small class="text-danger">
+                                        <strong>{{ __('Catatan:') }}</strong> {{ __('Format nomor harus dimulai dengan 08 (contoh: 081395777706). Format lain tidak diterima.') }}
+                                    </small>
                                 </div>
 
                                 <div class="mb-3">

@@ -120,14 +120,29 @@ class SessionApiController extends Controller
         // Validate request
         $request->validate([
             'name' => 'required|string|max:255',
-            'phone_number' => 'required|string|regex:/^[0-9]{9,13}$/',
+            'phone_number' => [
+                'required',
+                'string',
+                'regex:/^08[0-9]{8,11}$/',
+            ],
         ], [
             'name.required' => 'Device name is required',
             'phone_number.required' => 'Phone number is required',
-            'phone_number.regex' => 'Phone number must be 9-13 digits (without leading 0)',
+            'phone_number.regex' => 'Invalid phone number format. Use format: 081395777706 (10-13 digits, starting with 08)',
         ]);
 
         $user = $request->user;
+        
+        // Normalize phone number using PhoneNumberHelper (convert to +62 format for database)
+        $phoneNumber = \App\Helpers\PhoneNumberHelper::normalize($request->phone_number);
+        
+        if (!$phoneNumber) {
+            $this->usageService->log($request, 400, $startTime);
+            return response()->json([
+                'success' => false,
+                'error' => 'Invalid phone number format. Use format: 081395777706',
+            ], 400);
+        }
         
         // Check subscription plan limit
         $sessionsLimit = $this->getUserSessionsLimit($user);
@@ -142,9 +157,6 @@ class SessionApiController extends Controller
                 'error' => "You have reached your device limit ({$sessionsLimit}). Please delete an existing device first or upgrade your plan.",
             ], 403);
         }
-
-        // Format phone number with +62 prefix
-        $phoneNumber = '+62' . ltrim($request->phone_number, '0');
         
         // Generate unique session ID
         $sessionId = Str::random(16);

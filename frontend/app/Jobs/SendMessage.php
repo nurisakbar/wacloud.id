@@ -153,6 +153,7 @@ class SendMessage implements ShouldQueue
             $quotaDeducted = $this->quotaAlreadyDeducted;
             $quotaType = $this->quotaType;
             $quotaAmount = $this->quotaAmount;
+            $withWatermark = false; // Initialize watermark flag
 
             switch ($this->messageType) {
                 case 'text':
@@ -269,10 +270,14 @@ class SendMessage implements ShouldQueue
                         // Content already has watermark if it was free_text_quota
                         $finalContent = $this->content;
                         
+                        // Determine watermark status based on quota type
+                        $withWatermark = ($this->quotaType === 'free_text_quota');
+                        
                         Log::info('SendMessage Job: Using pre-deducted quota', [
                             'message_id' => $this->messageId,
                             'quota_type' => $this->quotaType,
                             'content_length' => strlen($finalContent),
+                            'with_watermark' => $withWatermark,
                         ]);
                     }
 

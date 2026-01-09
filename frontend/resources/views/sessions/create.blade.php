@@ -37,20 +37,17 @@
 
                             <div class="col-md-12 mb-6" style="margin-bottom: 20px;margin-top: 20px;">
                                 <label for="phone_number" class="form-label">Nomor Telepon <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text">+62</span>
-                                    </div>
-                                    <input type="text" 
-                                           class="form-control @error('phone_number') is-invalid @enderror" 
-                                           id="phone_number" 
-                                           name="phone_number" 
-                                           value="{{ old('phone_number') }}" 
-                                           required 
-                                           placeholder="81234567890"
-                                           pattern="[0-9]{9,13}"
-                                           maxlength="13">
-                                </div>
+                                <input type="text" 
+                                       class="form-control @error('phone_number') is-invalid @enderror" 
+                                       id="phone_number" 
+                                       name="phone_number" 
+                                       value="{{ old('phone_number') }}" 
+                                       required 
+                                       placeholder="081395777706"
+                                       pattern="^08[0-9]{8,11}$"
+                                       maxlength="13"
+                                       autocomplete="tel"
+                                       inputmode="numeric">
                                 
                                 @error('phone_number')
                                     <span class="invalid-feedback" role="alert">
@@ -59,7 +56,7 @@
                                 @enderror
                                 
                                 <small class="form-text text-muted">
-                                    Masukkan nomor tanpa angka 0 di depan. Contoh: 81234567890
+                                    Masukkan nomor telepon dengan format: <strong>081395777706</strong> (10-13 digit, dimulai dengan 08). Format lain tidak diterima.
                                 </small>
                             </div>
                         </div>

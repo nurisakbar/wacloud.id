@@ -154,7 +154,7 @@
                 <h2 class="h5 mb-0">Grafik Pesan Bulan Ini</h2>
                 <small class="text-muted">Jumlah pesan yang dikirim dari awal bulan hingga hari ini</small>
             </div>
-            <span class="badge bg-success">
+            <span class="badge bg-success text-white">
                 Total: {{ number_format($messageStats['total'] ?? 0, 0, ',', '.') }} pesan
             </span>
         </div>
@@ -171,13 +171,13 @@
                 <small class="text-muted">Penggunaan quota dari awal bulan hingga hari ini</small>
             </div>
             <div>
-                <span class="badge bg-success mr-2">
+                <span class="badge bg-success text-white mr-2">
                     <i class="fas fa-gift"></i> Free: Unlimited
                 </span>
-                <span class="badge bg-primary mr-2">
+                <span class="badge bg-primary text-white mr-2">
                     <i class="fas fa-star"></i> Text Premium: {{ number_format($quotaUsageStats['total_text_quota'] ?? 0, 0, ',', '.') }} pesan
                 </span>
-                <span class="badge bg-info">
+                <span class="badge bg-info text-white">
                     <i class="fas fa-film"></i> Multimedia: {{ number_format($quotaUsageStats['total_multimedia_quota'] ?? 0, 0, ',', '.') }} pesan
                 </span>
             </div>

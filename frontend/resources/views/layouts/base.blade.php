@@ -25,6 +25,111 @@
     @stack('styles')
     
     <style>
+        /* Badge Color Contrast Improvements - Ensure text readability */
+        /* Badge dengan background gelap - gunakan text putih */
+        .badge.bg-primary:not(.text-dark):not(.text-black),
+        .badge.bg-success:not(.text-dark):not(.text-black),
+        .badge.bg-danger:not(.text-dark):not(.text-black),
+        .badge.bg-info:not(.text-dark):not(.text-black),
+        .badge.bg-secondary:not(.text-dark):not(.text-black),
+        .badge.bg-dark:not(.text-dark):not(.text-black) {
+            color: #ffffff !important;
+        }
+        
+        /* Badge dengan background terang (warning) - gunakan text gelap */
+        .badge.bg-warning:not(.text-white):not(.text-light) {
+            color: #000000 !important;
+            font-weight: 600;
+        }
+        
+        /* Badge dengan bg-opacity - pastikan kontras baik */
+        .badge.bg-primary.bg-opacity-10 {
+            color: #0d6efd !important;
+            background-color: rgba(13, 110, 253, 0.1) !important;
+        }
+        
+        .badge.bg-success.bg-opacity-10 {
+            color: #198754 !important;
+            background-color: rgba(25, 135, 84, 0.1) !important;
+        }
+        
+        .badge.bg-danger.bg-opacity-10 {
+            color: #dc3545 !important;
+            background-color: rgba(220, 53, 69, 0.1) !important;
+        }
+        
+        .badge.bg-info.bg-opacity-10 {
+            color: #0dcaf0 !important;
+            background-color: rgba(13, 202, 240, 0.1) !important;
+        }
+        
+        .badge.bg-warning.bg-opacity-10 {
+            color: #ffc107 !important;
+            background-color: rgba(255, 193, 7, 0.1) !important;
+        }
+        
+        .badge.bg-secondary.bg-opacity-10 {
+            color: #6c757d !important;
+            background-color: rgba(108, 117, 125, 0.1) !important;
+        }
+        
+        /* Badge dengan border - pastikan kontras baik */
+        .badge.border-primary {
+            border-color: #0d6efd !important;
+        }
+        
+        .badge.border-success {
+            border-color: #198754 !important;
+        }
+        
+        .badge.border-danger {
+            border-color: #dc3545 !important;
+        }
+        
+        .badge.border-info {
+            border-color: #0dcaf0 !important;
+        }
+        
+        .badge.border-warning {
+            border-color: #ffc107 !important;
+        }
+        
+        .badge.border-secondary {
+            border-color: #6c757d !important;
+        }
+        
+        /* Legacy badge classes (Bootstrap 4 style) */
+        .badge.badge-primary {
+            background-color: #4e73df !important;
+            color: #ffffff !important;
+        }
+        
+        .badge.badge-success {
+            background-color: #1cc88a !important;
+            color: #ffffff !important;
+        }
+        
+        .badge.badge-danger {
+            background-color: #e74a3b !important;
+            color: #ffffff !important;
+        }
+        
+        .badge.badge-info {
+            background-color: #36b9cc !important;
+            color: #ffffff !important;
+        }
+        
+        .badge.badge-warning {
+            background-color: #f6c23e !important;
+            color: #000000 !important;
+            font-weight: 600;
+        }
+        
+        .badge.badge-secondary {
+            background-color: #858796 !important;
+            color: #ffffff !important;
+        }
+        
         .support-whatsapp-btn {
             position: fixed;
             bottom: 30px;

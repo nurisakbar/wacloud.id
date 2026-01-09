@@ -21,17 +21,17 @@
                             <div class="d-flex align-items-center mb-3">
                                 <div class="me-3">
                                     @if ($message->isIncoming())
-                                        <span class="badge bg-primary fs-6 px-3 py-2">
+                                        <span class="badge bg-primary text-white fs-6 px-3 py-2">
                                             <i class="fas fa-inbox"></i> {{ __('Incoming') }}
                                         </span>
                                     @else
-                                        <span class="badge bg-success fs-6 px-3 py-2">
+                                        <span class="badge bg-success text-white fs-6 px-3 py-2">
                                             <i class="fas fa-paper-plane"></i> {{ __('Outgoing') }}
                                         </span>
                                     @endif
                                 </div>
                                 <div>
-                                    <span class="badge bg-info fs-6 px-3 py-2">
+                                    <span class="badge bg-info text-white fs-6 px-3 py-2">
                                         <i class="fas fa-{{ $message->message_type === 'text' ? 'comment' : ($message->message_type === 'image' ? 'image' : ($message->message_type === 'video' ? 'video' : 'file')) }}"></i> 
                                         {{ ucfirst($message->message_type) }}
                                     </span>

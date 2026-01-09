@@ -49,13 +49,26 @@ class SessionController extends Controller
         // Security: Validate request
         $request->validate([
             'session_name' => 'required|string|max:255',
-            'phone_number' => 'required|string|regex:/^[0-9]{9,13}$/',
+            'phone_number' => [
+                'required',
+                'string',
+                'regex:/^08[0-9]{8,11}$/',
+            ],
         ], [
             'phone_number.required' => 'Nomor telepon wajib diisi.',
-            'phone_number.regex' => 'Nomor telepon harus 9-13 digit angka (tanpa 0 di depan).',
+            'phone_number.regex' => 'Format nomor telepon tidak valid. Gunakan format: 081395777706 (10-13 digit, dimulai dengan 08).',
         ]);
 
         $user = Auth::user();
+        
+        // Normalize phone number using PhoneNumberHelper (convert to +62 format for database)
+        $phoneNumber = \App\Helpers\PhoneNumberHelper::normalize($request->phone_number);
+        
+        if (!$phoneNumber) {
+            return back()->withErrors([
+                'phone_number' => 'Format nomor telepon tidak valid. Gunakan format: 081395777706',
+            ])->withInput();
+        }
         
         // WAHA Plus supports multiple sessions - check subscription plan limit
         $sessionsLimit = $this->getUserSessionsLimit($user);
@@ -68,9 +81,6 @@ class SessionController extends Controller
                 'error' => "You have reached your session limit ({$sessionsLimit}). Please delete an existing session first or upgrade your plan."
             ]);
         }
-
-        // Format phone number with +62 prefix
-        $phoneNumber = '+62' . ltrim($request->phone_number, '0');
         
         // WAHA Plus supports multiple sessions - use UUID for session_id
         $sessionId = (string) Str::uuid();
@@ -536,13 +546,44 @@ class SessionController extends Controller
     {
         $this->authorize('delete', $session);
 
-        // Delete from WAHA
-        $this->wahaService->deleteSession($session->session_id);
+        $sessionId = $session->session_id;
+        $sessionDbId = $session->id;
 
-        // Delete from database
+        \Log::info('SessionController: Deleting session and all related data', [
+            'session_id' => $sessionId,
+            'session_db_id' => $sessionDbId,
+            'session_name' => $session->session_name,
+        ]);
+
+        // Delete all messages (incoming and outgoing) for this session
+        $messagesCount = $session->messages()->count();
+        $session->messages()->delete();
+        \Log::info('SessionController: Deleted messages', [
+            'session_id' => $sessionId,
+            'messages_deleted' => $messagesCount,
+        ]);
+
+        // Delete all webhooks for this session
+        $webhooksCount = $session->webhooks()->count();
+        $session->webhooks()->delete();
+        \Log::info('SessionController: Deleted webhooks', [
+            'session_id' => $sessionId,
+            'webhooks_deleted' => $webhooksCount,
+        ]);
+
+        // Delete from WAHA
+        $this->wahaService->deleteSession($sessionId);
+
+        // Delete from database (this will cascade delete related records if foreign keys are set)
         $session->delete();
 
+        \Log::info('SessionController: Session deleted successfully', [
+            'session_id' => $sessionId,
+            'total_messages_deleted' => $messagesCount,
+            'total_webhooks_deleted' => $webhooksCount,
+        ]);
+
         return redirect()->route('sessions.index')
-            ->with('success', 'Session deleted successfully.');
+            ->with('success', 'Session dan semua data terkait (pesan masuk, pesan keluar, dan webhook) telah dihapus.');
     }
 }

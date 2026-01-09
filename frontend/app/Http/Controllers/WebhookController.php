@@ -68,7 +68,27 @@ class WebhookController extends Controller
                     }
                 },
             ],
-            'session_id' => 'nullable|exists:whatsapp_sessions,id',
+            'session_id' => [
+                'required',
+                'exists:whatsapp_sessions,id',
+                function ($attribute, $value, $fail) {
+                    // Ensure the session belongs to the authenticated user
+                    $session = WhatsAppSession::find($value);
+                    if ($session && $session->user_id !== Auth::id()) {
+                        $fail('Device tidak ditemukan atau tidak memiliki akses.');
+                    }
+                    
+                    // Check if this device already has a webhook
+                    $existingWebhook = Webhook::where('user_id', Auth::id())
+                        ->where('session_id', $value)
+                        ->where('id', '!=', request()->route('webhook')?->id) // Exclude current webhook if updating
+                        ->first();
+                    
+                    if ($existingWebhook) {
+                        $fail('Device ini sudah memiliki webhook. Setiap device hanya boleh memiliki 1 webhook.');
+                    }
+                },
+            ],
             'events' => 'required|array',
             'events.*' => 'in:message,status,session',
             'is_active' => 'nullable|boolean',
@@ -156,7 +176,27 @@ class WebhookController extends Controller
                     }
                 },
             ],
-            'session_id' => 'nullable|exists:whatsapp_sessions,id',
+            'session_id' => [
+                'required',
+                'exists:whatsapp_sessions,id',
+                function ($attribute, $value, $fail) use ($webhook) {
+                    // Ensure the session belongs to the authenticated user
+                    $session = WhatsAppSession::find($value);
+                    if ($session && $session->user_id !== Auth::id()) {
+                        $fail('Device tidak ditemukan atau tidak memiliki akses.');
+                    }
+                    
+                    // Check if this device already has a webhook (excluding current webhook)
+                    $existingWebhook = Webhook::where('user_id', Auth::id())
+                        ->where('session_id', $value)
+                        ->where('id', '!=', $webhook->id)
+                        ->first();
+                    
+                    if ($existingWebhook) {
+                        $fail('Device ini sudah memiliki webhook. Setiap device hanya boleh memiliki 1 webhook.');
+                    }
+                },
+            ],
             'events' => 'required|array',
             'events.*' => 'in:message,status,session',
             'secret' => 'nullable|string|min:16',

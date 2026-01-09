@@ -28,6 +28,22 @@ class WahaService
     }
 
     /**
+     * Get WAHA session name based on environment.
+     * In local environment, use 'default' for WAHA Core compatibility.
+     * In production, use the actual session_id for WAHA Plus multi-session support.
+     *
+     * @param string $sessionId The original session ID
+     * @return string The WAHA session name to use
+     */
+    protected function getWahaSessionName(string $sessionId): string
+    {
+        if (config('app.env') === 'local') {
+            return 'default';
+        }
+        return $sessionId;
+    }
+
+    /**
      * Get HTTP client with authentication headers.
      */
     protected function httpClient(int $timeout = null)
@@ -88,8 +104,17 @@ class WahaService
                     usleep(500000 * $retryCount);
                 }
                 
+                // Determine WAHA session name based on environment
+                // In local environment, use 'default' for WAHA Core compatibility
+                // In production, use the actual session_id for WAHA Plus multi-session support
+                $isLocal = config('app.env') === 'local';
+                $wahaSessionName = $isLocal ? 'default' : $sessionId;
+                $originalSessionId = $sessionId; // Keep original for webhook routing
+                
                 Log::info('WAHA: Creating session', [
                     'session_id' => $sessionId,
+                    'waha_session_name' => $wahaSessionName,
+                    'environment' => config('app.env'),
                     'url' => $url,
                     'base_url' => $this->baseUrl,
                     'api_key_configured' => !empty($this->apiKey ?? env('WAHA_API_KEY')),
@@ -98,7 +123,7 @@ class WahaService
                 
                 // Build payload with optional engine configuration
                 $payload = [
-                    'name' => $sessionId,
+                    'name' => $wahaSessionName,
                 ];
                 
                 // Add engine configuration if specified (GOWS supports more features like polls)
@@ -160,10 +185,12 @@ class WahaService
                     }
                 }
                 
-                $webhookUrl = rtrim($appUrl, '/') . '/webhook/receive/' . $sessionId;
+                // Webhook URL always uses original session_id for routing, not WAHA session name
+                $webhookUrl = rtrim($appUrl, '/') . '/webhook/receive/' . $originalSessionId;
                 
                 Log::info('WAHA: Configuring built-in webhook (automatic - no manual setup needed)', [
-                    'session_id' => $sessionId,
+                    'session_id' => $originalSessionId,
+                    'waha_session_name' => $wahaSessionName,
                     'webhook_url' => $webhookUrl,
                     'app_url' => config('app.url'),
                     'note' => 'This webhook automatically receives and saves incoming messages to database',
@@ -191,7 +218,8 @@ class WahaService
                 ];
                 
                 Log::info('WAHA: Built-in webhook configured successfully', [
-                    'session_id' => $sessionId,
+                    'session_id' => $originalSessionId,
+                    'waha_session_name' => $wahaSessionName,
                     'webhook_url' => $webhookUrl,
                     'events' => $payload['config']['webhooks'][0]['events'],
                     'status' => 'Messages will be automatically received and saved to database',
@@ -202,15 +230,27 @@ class WahaService
 
                 if ($response->successful()) {
                     Log::info('WAHA: Create session success with built-in webhook', [
-                        'session_id' => $sessionId,
+                        'session_id' => $originalSessionId,
+                        'waha_session_name' => $wahaSessionName,
+                        'environment' => config('app.env'),
                         'status' => $response->status(),
                         'webhook_url' => $webhookUrl,
                         'note' => 'Built-in webhook is now active - incoming messages will be automatically received and saved',
                     ]);
-                    return [
+                    
+                    // Return with session name info for compatibility
+                    $result = [
                         'success' => true,
                         'data' => $response->json(),
                     ];
+                    
+                    // If using 'default' session name (local env), include it in response
+                    if ($wahaSessionName === 'default') {
+                        $result['waha_session_name'] = 'default';
+                        $result['original_session_id'] = $originalSessionId;
+                    }
+                    
+                    return $result;
                 }
 
                 // Don't retry on 4xx errors (client errors)
@@ -219,20 +259,22 @@ class WahaService
                     $responseBody = $response->body();
                     
                     // Check if error is about WAHA Core only supporting 'default' session
+                    // Only retry if we're NOT already using 'default' (i.e., in production)
                     if ($response->status() === 422 && 
                         (stripos($errorMessage, 'WAHA Core support only') !== false || 
                          stripos($errorMessage, 'default session') !== false) &&
-                        $sessionId !== 'default') {
+                        $wahaSessionName !== 'default') {
                         
-                        Log::warning('WAHA Core detected: Retrying with default session name', [
-                            'original_session_id' => $sessionId,
+                        Log::warning('WAHA Core detected in production: Retrying with default session name', [
+                            'original_session_id' => $originalSessionId,
+                            'current_waha_session_name' => $wahaSessionName,
                             'retry_with' => 'default',
                             'error' => $errorMessage,
+                            'environment' => config('app.env'),
                         ]);
                         
                         // Retry with 'default' session name
-                        $originalSessionId = $sessionId;
-                        $sessionId = 'default';
+                        $wahaSessionName = 'default';
                         $payload['name'] = 'default';
                         $url = "{$this->baseUrl}/api/sessions/start";
                         
@@ -558,28 +600,42 @@ class WahaService
     public function getSessionStatus(string $sessionId): array
     {
         try {
+            // In local environment, use 'default' session name for WAHA Core compatibility
+            $isLocal = config('app.env') === 'local';
+            $wahaSessionName = $isLocal ? 'default' : $sessionId;
+            $originalSessionId = $sessionId;
+            
             $response = $this->httpClient()
-                ->get("{$this->baseUrl}/api/sessions/{$sessionId}");
+                ->get("{$this->baseUrl}/api/sessions/{$wahaSessionName}");
 
             if ($response->successful()) {
                 $data = $response->json();
-                return [
+                $result = [
                     'success' => true,
                     'status' => $data['status'] ?? 'unknown',
                     'data' => $data,
                 ];
+                
+                // Include session name info if using 'default'
+                if ($wahaSessionName === 'default') {
+                    $result['waha_session_name'] = 'default';
+                }
+                
+                return $result;
             }
 
             $errorMessage = $response->json()['message'] ?? 'Failed to get session status';
             
-            // Check if error indicates WAHA Core limitation
+            // Check if error indicates WAHA Core limitation (fallback for production)
+            // Only retry if we're NOT already using 'default' (i.e., in production)
             if ($response->status() === 422 && 
                 (stripos($errorMessage, 'WAHA Core support only') !== false || 
                  stripos($errorMessage, 'default session') !== false) &&
-                $sessionId !== 'default') {
+                $wahaSessionName !== 'default') {
                 
                 Log::info('WAHA Core detected in getSessionStatus: Retrying with default session', [
-                    'original_session_id' => $sessionId,
+                    'original_session_id' => $originalSessionId,
+                    'environment' => config('app.env'),
                 ]);
                 
                 // Retry with 'default' session name
@@ -589,7 +645,7 @@ class WahaService
                 if ($response->successful()) {
                     $data = $response->json();
                     Log::info('WAHA: Session status retrieved with default session (WAHA Core)', [
-                        'original_session_id' => $sessionId,
+                        'original_session_id' => $originalSessionId,
                         'waha_session_name' => 'default',
                         'status' => $data['status'] ?? 'unknown',
                     ]);
@@ -738,8 +794,9 @@ class WahaService
     {
         try {
             $url = "{$this->baseUrl}/api/sendText";
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
             $payload = [
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'text' => $text,
             ];
@@ -866,9 +923,10 @@ class WahaService
             $fileName = basename($imagePath);
             $fileSize = strlen($fileContent);
 
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
             Log::info('WAHA: Sending image file', [
                 'url' => $url,
-                    'session' => $sessionId,
+                    'session' => $wahaSessionName,
                     'chatId' => $chatId,
                 'file_name' => $fileName,
                 'file_size' => $fileSize,
@@ -878,7 +936,7 @@ class WahaService
             // Use EXACT same format as sendDocument which works
             // Laravel HTTP client attach() automatically handles multipart
             $formData = [
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
             ];
             
@@ -1000,9 +1058,12 @@ class WahaService
                 $mimetype = 'image/webp';
             }
             
+            // Get WAHA session name based on environment
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
+            
             // Build payload according to WAHA documentation
             $payload = [
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'file' => [
                     'mimetype' => $mimetype,
@@ -1017,7 +1078,7 @@ class WahaService
             
             Log::info('WAHA: Sending image by URL', [
                 'url' => $url,
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'image_url' => $imageUrl,
                 'mimetype' => $mimetype,
@@ -1119,8 +1180,9 @@ class WahaService
             }
             
             // Build payload according to WAHA documentation
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
             $payload = [
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'file' => [
                     'mimetype' => $mimetype,
@@ -1229,10 +1291,11 @@ class WahaService
     public function sendDocument(string $sessionId, string $chatId, string $documentPath, ?string $filename = null): array
     {
         try {
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
             $response = $this->httpClient()
                 ->attach('file', file_get_contents($documentPath), $filename ?? basename($documentPath))
                 ->post("{$this->baseUrl}/api/sendFile", [
-                    'session' => $sessionId,
+                    'session' => $wahaSessionName,
                     'chatId' => $chatId,
                 ]);
 
@@ -1300,8 +1363,9 @@ class WahaService
             }
             
             // Build payload according to WAHA documentation
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
             $payload = [
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'file' => [
                     'mimetype' => $mimetype,
@@ -1316,7 +1380,7 @@ class WahaService
             
             Log::info('WAHA: Sending document by URL', [
                 'url' => $url,
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'document_url' => $documentUrl,
                 'mimetype' => $mimetype,
@@ -1392,8 +1456,9 @@ class WahaService
             $url = "{$this->baseUrl}/api/sendPoll";
             
             // Build payload according to WAHA documentation
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
             $payload = [
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'poll' => [
                     'name' => $pollName,
@@ -1404,7 +1469,7 @@ class WahaService
             
             Log::info('WAHA: Sending poll', [
                 'url' => $url,
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'poll_name' => $pollName,
                 'options_count' => count($options),
@@ -1530,8 +1595,9 @@ class WahaService
             $url = "{$this->baseUrl}/api/sendButtons";
             
             // Build payload according to WAHA documentation
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
             $payload = [
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'body' => $body,
                 'buttons' => $buttons,
@@ -1551,7 +1617,7 @@ class WahaService
             
             Log::info('WAHA: Sending button message', [
                 'url' => $url,
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'body_length' => strlen($body),
                 'buttons_count' => count($buttons),
@@ -2432,8 +2498,9 @@ class WahaService
             $url = "{$this->baseUrl}/api/sendList";
 
             // Build payload according to WAHA documentation
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
             $payload = [
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'message' => $message,
             ];
@@ -2444,7 +2511,7 @@ class WahaService
 
             Log::info('WAHA: Sending list message', [
                 'url' => $url,
-                'session' => $sessionId,
+                'session' => $wahaSessionName,
                 'chatId' => $chatId,
                 'message_title' => $message['title'] ?? null,
                 'sections_count' => count($message['sections'] ?? []),

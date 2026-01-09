@@ -112,16 +112,34 @@
                         <!-- Device Selection -->
                         <div class="mb-3">
                             <label for="session_id" class="form-label">
-                                {{ __('Device') }} <small class="text-muted">({{ __('Optional') }})</small>
+                                {{ __('Device') }} <span class="text-danger">*</span>
                             </label>
-                            <select class="form-select" id="session_id" name="session_id">
-                                <option value="">{{ __('All Devices') }} – {{ __('Menerima event dari semua device') }}</option>
+                            <select class="form-select @error('session_id') is-invalid @enderror" id="session_id" name="session_id" required>
+                                <option value="">{{ __('Pilih Device') }}</option>
                                 @foreach($sessions as $session)
-                                    <option value="{{ $session->id }}">{{ $session->session_name }} ({{ $session->session_id }})</option>
+                                    @php
+                                        // Check if this device already has a webhook
+                                        $hasWebhook = \App\Models\Webhook::where('user_id', Auth::id())
+                                            ->where('session_id', $session->id)
+                                            ->exists();
+                                    @endphp
+                                    <option value="{{ $session->id }}" {{ old('session_id') == $session->id ? 'selected' : '' }} 
+                                            {{ $hasWebhook ? 'disabled' : '' }}>
+                                        {{ $session->session_name }} ({{ $session->session_id }})
+                                        @if($hasWebhook)
+                                            - {{ __('Sudah memiliki webhook') }}
+                                        @endif
+                                    </option>
                                 @endforeach
                             </select>
+                            @error('session_id')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong>{{ $message }}</strong>
+                                </span>
+                            @enderror
                             <small class="form-text text-muted">
-                                {{ __('Pilih device spesifik untuk menerima event hanya dari device tersebut, atau biarkan kosong untuk menerima event dari semua device Anda.') }}
+                                <i class="fas fa-info-circle"></i>
+                                {{ __('Pilih device yang akan menerima event. Setiap device hanya boleh memiliki 1 webhook.') }}
                             </small>
                         </div>
 
