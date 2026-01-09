@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Helpers\PhoneNumberHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\SendMessageRequest;
+use App\Jobs\SendMessage as SendMessageJob;
 use App\Models\Message;
 use App\Models\MessagePricingSetting;
 use App\Models\QuotaUsageLog;
@@ -102,7 +103,6 @@ class MessageApiController extends Controller
         }
 
         try {
-            $result = null;
             $template = null;
             $processedTemplate = null;
             
@@ -138,17 +138,6 @@ class MessageApiController extends Controller
                 $processedTemplate = $this->templateService->processTemplate($template, $variables);
             }
 
-            $messageData = [
-                'user_id' => $request->user->id,
-                'session_id' => $session->id,
-                'from_number' => null,
-                'to_number' => $normalizedNumber,
-                'chat_type' => $chatType,
-                'message_type' => $template ? $processedTemplate['message_type'] : $request->message_type,
-                'direction' => 'outgoing',
-                'status' => 'pending', // Set to pending first, update to sent after successful send
-            ];
-
             // Use template content if template is provided
             $messageType = $template ? $processedTemplate['message_type'] : $request->message_type;
 
@@ -161,9 +150,46 @@ class MessageApiController extends Controller
             $quotaDeducted = false;
             $quotaType = null;
             $quotaAmount = 0;
-            $messageId = null; // Will be set after message is created
+            
+            // Prepare message data and validate/deduct quota based on message type
+            $messageData = [
+                'user_id' => $request->user->id,
+                'session_id' => $session->id,
+                'from_number' => null,
+                'to_number' => $normalizedNumber,
+                'chat_type' => $chatType,
+                'message_type' => $messageType,
+                'direction' => 'outgoing',
+                'status' => 'pending', // Will be updated by job
+            ];
 
-            // Handle different message types
+            // Prepare job parameters
+            $jobParams = [
+                'sessionId' => $session->id,
+                'chatId' => $chatId,
+                'messageType' => $messageType,
+                'content' => null,
+                'imageUrl' => null,
+                'videoUrl' => null,
+                'documentUrl' => null,
+                'caption' => null,
+                'pollName' => null,
+                'pollOptions' => null,
+                'multipleAnswers' => null,
+                'fallbackToText' => null,
+                'buttons' => null,
+                'header' => null,
+                'footer' => null,
+                'headerImage' => null,
+                'listMessage' => null,
+                'replyTo' => null,
+                'filename' => null,
+                'asNote' => null,
+                'convert' => null,
+                'chatType' => $chatType,
+            ];
+
+            // Handle different message types - validate quota and prepare data
             switch ($messageType) {
                 case 'text':
                     // Support both 'text' and 'message' fields, or use template content
@@ -176,69 +202,33 @@ class MessageApiController extends Controller
                     // Determine if should use watermark (free) or premium
                     $watermarkPrice = $pricing->getPriceForMessageType('text', true);
                     $premiumPrice = $pricing->getPriceForMessageType('text', false);
-                    $finalContent = $textContent;
                     
                     // PRIORITAS: 1. text_quota (non-watermark), 2. free_text_quota (watermark), 3. balance
-                    
-                    // Prioritas 1: Cek text_quota (premium, tanpa watermark) terlebih dahulu
+                    // Validate quota availability and prepare content
+                    $finalContent = $textContent;
                     if ($userQuota->text_quota > 0) {
-                        if (!$userQuota->deductTextQuota(1)) {
-                            throw new \Exception('Insufficient text quota');
-                        }
                         $quotaDeducted = true;
                         $quotaType = 'text_quota';
                         $quotaAmount = 1;
-                        // Tidak perlu watermark, gunakan content asli
+                        // No watermark needed
                         $finalContent = $textContent;
-                    }
-                    // Prioritas 2: Jika text_quota habis, cek free_text_quota (dengan watermark)
-                    elseif ($watermarkPrice == 0 && $userQuota->hasFreeTextQuota(1)) {
-                        if (!$userQuota->deductFreeTextQuota(1)) {
-                            throw new \Exception('Insufficient free text quota. Please wait until next month or purchase premium quota.');
-                        }
+                    } elseif ($watermarkPrice == 0 && $userQuota->hasFreeTextQuota(1)) {
                         $quotaDeducted = true;
                         $quotaType = 'free_text_quota';
                         $quotaAmount = 1;
-                        // Tambahkan watermark
+                        // Add watermark for free text quota
                         $finalContent = $watermarkService->addWatermark($textContent, $pricing->watermark_text);
-                    }
-                    // Prioritas 3: Jika keduanya habis, gunakan balance
-                    elseif ($userQuota->hasEnoughBalance($premiumPrice)) {
-                        if (!$userQuota->deductBalance($premiumPrice)) {
-                            throw new \Exception('Insufficient balance');
-                        }
+                    } elseif ($userQuota->hasEnoughBalance($premiumPrice)) {
                         $quotaDeducted = true;
                         $quotaType = 'balance';
                         $quotaAmount = $premiumPrice;
-                        // Tidak perlu watermark, gunakan content asli
+                        // No watermark needed
                         $finalContent = $textContent;
                     } else {
-                        // Semua quota habis
                         throw new \Exception('Insufficient quota or balance. Please purchase quota first.');
                     }
                     
-                    // Log the request details for debugging
-                    \Log::info('API: Sending text message', [
-                        'session_id' => $session->session_id,
-                        'chat_id' => $chatId,
-                        'text_length' => strlen($finalContent),
-                        'user_id' => $request->user->id,
-                        'quota_type' => $quotaType,
-                    ]);
-                    
-                    $result = $this->wahaService->sendText(
-                        $session->session_id,
-                        $chatId,
-                        $finalContent
-                    );
-                    
-                    // Log the result
-                    \Log::info('API: WAHA sendText response', [
-                        'success' => $result['success'] ?? false,
-                        'error' => $result['error'] ?? null,
-                        'data' => $result['data'] ?? null,
-                    ]);
-                    
+                    $jobParams['content'] = $finalContent;
                     $messageData['content'] = $finalContent;
                     break;
 
@@ -252,21 +242,14 @@ class MessageApiController extends Controller
                         $caption = $request->caption;
                     }
                     
-                    // Multimedia message - charge user
+                    // Multimedia message - validate quota
                     $price = $pricing->getPriceForMessageType('image');
                     
-                    // Check quota BEFORE sending
                     if ($userQuota->multimedia_quota > 0) {
-                        if (!$userQuota->deductMultimediaQuota(1)) {
-                            throw new \Exception('Insufficient multimedia quota');
-                        }
                         $quotaDeducted = true;
                         $quotaType = 'multimedia_quota';
                         $quotaAmount = 1;
                     } elseif ($userQuota->hasEnoughBalance($price)) {
-                        if (!$userQuota->deductBalance($price)) {
-                            throw new \Exception('Insufficient balance');
-                        }
                         $quotaDeducted = true;
                         $quotaType = 'balance';
                         $quotaAmount = $price;
@@ -274,52 +257,21 @@ class MessageApiController extends Controller
                         throw new \Exception('Insufficient quota or balance. Please purchase quota first.');
                     }
                     
-                    \Log::info('API: Sending image message', [
-                        'session_id' => $session->session_id,
-                        'chat_id' => $chatId,
-                        'user_id' => $request->user->id,
-                        'image_url' => $imageUrl,
-                        'has_caption' => !empty($caption),
-                        'quota_type' => $quotaType,
-                    ]);
-                    
-                    $result = $this->wahaService->sendImageByUrl(
-                        $session->session_id,
-                        $chatId,
-                        $imageUrl,
-                        $caption
-                    );
-                    
-                    \Log::info('API: WAHA sendImage response', [
-                        'success' => $result['success'] ?? false,
-                        'error' => $result['error'] ?? null,
-                        'data' => $result['data'] ?? null,
-                    ]);
-                    
+                    $jobParams['imageUrl'] = $imageUrl;
+                    $jobParams['caption'] = $caption;
                     $messageData['media_url'] = $imageUrl;
                     $messageData['caption'] = $caption;
                     break;
 
                 case 'video':
-                    // Increase max execution time for video uploads (120 seconds)
-                    $originalMaxExecutionTime = ini_get('max_execution_time');
-                    set_time_limit(120);
-                    
-                    // Multimedia message - charge user
+                    // Multimedia message - validate quota
                     $price = $pricing->getPriceForMessageType('video');
                     
-                    // Check quota BEFORE sending
                     if ($userQuota->multimedia_quota > 0) {
-                        if (!$userQuota->deductMultimediaQuota(1)) {
-                            throw new \Exception('Insufficient multimedia quota');
-                        }
                         $quotaDeducted = true;
                         $quotaType = 'multimedia_quota';
                         $quotaAmount = 1;
                     } elseif ($userQuota->hasEnoughBalance($price)) {
-                        if (!$userQuota->deductBalance($price)) {
-                            throw new \Exception('Insufficient balance');
-                        }
                         $quotaDeducted = true;
                         $quotaType = 'balance';
                         $quotaAmount = $price;
@@ -327,59 +279,23 @@ class MessageApiController extends Controller
                         throw new \Exception('Insufficient quota or balance. Please purchase quota first.');
                     }
                     
-                    $videoUrl = $request->video_url;
-                    
-                    \Log::info('API: Sending video message', [
-                        'session_id' => $session->session_id,
-                        'chat_id' => $chatId,
-                        'user_id' => $request->user->id,
-                        'video_url' => $videoUrl,
-                        'has_caption' => !empty($request->caption),
-                        'as_note' => $request->as_note ?? false,
-                        'convert' => $request->convert ?? false,
-                        'quota_type' => $quotaType,
-                    ]);
-                    
-                    $result = $this->wahaService->sendVideoByUrl(
-                        $session->session_id,
-                        $chatId,
-                        $videoUrl,
-                        $request->caption,
-                        $request->as_note ?? false,
-                        $request->convert ?? false
-                    );
-                    
-                    // Restore original max execution time
-                    if ($originalMaxExecutionTime !== false) {
-                        set_time_limit((int)$originalMaxExecutionTime);
-                    }
-                    
-                    \Log::info('API: WAHA sendVideo response', [
-                        'success' => $result['success'] ?? false,
-                        'error' => $result['error'] ?? null,
-                        'data' => $result['data'] ?? null,
-                    ]);
-                    
-                    $messageData['media_url'] = $videoUrl;
+                    $jobParams['videoUrl'] = $request->video_url;
+                    $jobParams['caption'] = $request->caption;
+                    $jobParams['asNote'] = $request->as_note ?? false;
+                    $jobParams['convert'] = $request->convert ?? false;
+                    $messageData['media_url'] = $request->video_url;
                     $messageData['caption'] = $request->caption;
                     break;
 
                 case 'document':
-                    // Multimedia message - charge user
+                    // Multimedia message - validate quota
                     $price = $pricing->getPriceForMessageType('document');
                     
-                    // Check quota BEFORE sending
                     if ($userQuota->multimedia_quota > 0) {
-                        if (!$userQuota->deductMultimediaQuota(1)) {
-                            throw new \Exception('Insufficient multimedia quota');
-                        }
                         $quotaDeducted = true;
                         $quotaType = 'multimedia_quota';
                         $quotaAmount = 1;
                     } elseif ($userQuota->hasEnoughBalance($price)) {
-                        if (!$userQuota->deductBalance($price)) {
-                            throw new \Exception('Insufficient balance');
-                        }
                         $quotaDeducted = true;
                         $quotaType = 'balance';
                         $quotaAmount = $price;
@@ -387,90 +303,24 @@ class MessageApiController extends Controller
                         throw new \Exception('Insufficient quota or balance. Please purchase quota first.');
                     }
                     
-                    $documentUrl = $request->document_url;
-                    
-                    \Log::info('API: Sending document message', [
-                        'session_id' => $session->session_id,
-                        'chat_id' => $chatId,
-                        'user_id' => $request->user->id,
-                        'document_url' => $documentUrl,
-                        'filename' => $request->filename,
-                        'quota_type' => $quotaType,
-                    ]);
-                    
-                    $result = $this->wahaService->sendDocumentByUrl(
-                        $session->session_id,
-                        $chatId,
-                        $documentUrl,
-                        $request->filename
-                    );
-                    
-                    \Log::info('API: WAHA sendDocument response', [
-                        'success' => $result['success'] ?? false,
-                        'error' => $result['error'] ?? null,
-                    ]);
-                    
-                    $messageData['media_url'] = $documentUrl;
+                    $jobParams['documentUrl'] = $request->document_url;
+                    $jobParams['filename'] = $request->filename;
+                    $jobParams['caption'] = $request->caption;
+                    $messageData['media_url'] = $request->document_url;
                     $messageData['caption'] = $request->caption;
                     break;
 
                 case 'poll':
-                    \Log::info('API: Sending poll message', [
-                        'session_id' => $session->session_id,
-                        'chat_id' => $chatId,
-                        'user_id' => $request->user->id,
+                    // Poll messages don't charge quota (free)
+                    $jobParams['pollName'] = $request->poll_name;
+                    $jobParams['pollOptions'] = $request->poll_options;
+                    $jobParams['multipleAnswers'] = $request->multiple_answers ?? false;
+                    $jobParams['fallbackToText'] = $request->fallback_to_text ?? false;
+                    $messageData['content'] = json_encode([
                         'poll_name' => $request->poll_name,
-                        'options_count' => count($request->poll_options),
+                        'options' => $request->poll_options,
                         'multiple_answers' => $request->multiple_answers ?? false,
-                        'fallback_to_text' => $request->fallback_to_text ?? false,
                     ]);
-                    
-                    // Try to send poll, with optional fallback to text if not supported
-                    $result = $this->wahaService->sendPoll(
-                        $session->session_id,
-                        $chatId,
-                        $request->poll_name,
-                        $request->poll_options,
-                        $request->multiple_answers ?? false,
-                        $request->fallback_to_text ?? false
-                    );
-                    
-                    \Log::info('API: WAHA sendPoll response', [
-                        'success' => $result['success'] ?? false,
-                        'error' => $result['error'] ?? null,
-                        'data' => $result['data'] ?? null,
-                        'engine_not_supported' => $result['engine_not_supported'] ?? false,
-                        'fallback_used' => $result['fallback_used'] ?? false,
-                    ]);
-                    
-                    // If fallback was used, the content will be the text message
-                    // Otherwise, store poll data as JSON
-                    if ($result['success'] && isset($result['fallback_used']) && $result['fallback_used']) {
-                        // Fallback to text was used - get the text content from response
-                        // For text messages, the content is in the Message.extendedTextMessage.text
-                        $textContent = '';
-                        if (isset($result['data']['_data']['Message']['extendedTextMessage']['text'])) {
-                            $textContent = $result['data']['_data']['Message']['extendedTextMessage']['text'];
-                        } elseif (isset($result['data']['body'])) {
-                            $textContent = $result['data']['body'];
-                        }
-                        $messageData['content'] = $textContent;
-                        $messageData['message_type'] = 'text'; // Change type to text since it was sent as text
-                    } elseif ($result['success']) {
-                        // Real poll was sent
-                        $messageData['content'] = json_encode([
-                            'poll_name' => $request->poll_name,
-                            'options' => $request->poll_options,
-                            'multiple_answers' => $request->multiple_answers ?? false,
-                        ]);
-                    } else {
-                        // Poll failed, store poll data anyway
-                        $messageData['content'] = json_encode([
-                            'poll_name' => $request->poll_name,
-                            'options' => $request->poll_options,
-                            'multiple_answers' => $request->multiple_answers ?? false,
-                        ]);
-                    }
                     break;
                     
                 case 'button':
@@ -490,56 +340,20 @@ class MessageApiController extends Controller
                         $headerImage = $request->header_image ?? $request->headerImage;
                     }
                     
-                    \Log::info('API: Sending button message', [
-                        'session_id' => $session->session_id,
-                        'chat_id' => $chatId,
-                        'user_id' => $request->user->id,
-                        'body_length' => strlen($body ?? ''),
-                        'buttons_count' => count($buttons ?? []),
-                        'has_header' => !empty($header),
-                        'has_footer' => !empty($footer),
-                        'has_header_image' => !empty($headerImage),
+                    // Button messages don't charge quota (free)
+                    $jobParams['content'] = $body;
+                    $jobParams['buttons'] = $buttons;
+                    $jobParams['header'] = $header;
+                    $jobParams['footer'] = $footer;
+                    $jobParams['headerImage'] = $headerImage;
+                    $jobParams['fallbackToText'] = $request->fallback_to_text ?? false;
+                    $messageData['content'] = json_encode([
+                        'body' => $body,
+                        'buttons' => $buttons,
+                        'header' => $header,
+                        'footer' => $footer,
+                        'header_image' => $headerImage,
                     ]);
-                    
-                    $result = $this->wahaService->sendButton(
-                        $session->session_id,
-                        $chatId,
-                        $body,
-                        $buttons,
-                        $header,
-                        $footer,
-                        $headerImage,
-                        $request->fallback_to_text ?? false // Fallback to text if button fails
-                    );
-                    
-                    \Log::info('API: WAHA sendButton response', [
-                        'success' => $result['success'] ?? false,
-                        'error' => $result['error'] ?? null,
-                        'data' => $result['data'] ?? null,
-                        'full_response' => json_encode($result),
-                    ]);
-                    
-                    // If fallback was used, store text content; otherwise store button data as JSON
-                    if ($result['success'] && isset($result['fallback_used']) && $result['fallback_used']) {
-                        // Fallback to text was used - get the text content from response
-                        $textContent = '';
-                        if (isset($result['data']['_data']['Message']['extendedTextMessage']['text'])) {
-                            $textContent = $result['data']['_data']['Message']['extendedTextMessage']['text'];
-                        } elseif (isset($result['data']['body'])) {
-                            $textContent = $result['data']['body'];
-                        }
-                        $messageData['content'] = $textContent;
-                        $messageData['message_type'] = 'text'; // Change type to text since it was sent as text
-                    } else {
-                        // Store button data as JSON
-                        $messageData['content'] = json_encode([
-                            'body' => $body,
-                            'buttons' => $buttons,
-                            'header' => $header,
-                            'footer' => $footer,
-                            'header_image' => $headerImage,
-                        ]);
-                    }
                     break;
 
                 case 'list':
@@ -553,28 +367,9 @@ class MessageApiController extends Controller
                         $replyTo = $request->reply_to;
                     }
                     
-                    \Log::info('API: Sending list message', [
-                        'session_id' => $session->session_id,
-                        'chat_id' => $chatId,
-                        'user_id' => $request->user->id,
-                        'message_title' => $listMessage['title'] ?? null,
-                        'sections_count' => count($listMessage['sections'] ?? []),
-                    ]);
-
-                    $result = $this->wahaService->sendList(
-                        $session->session_id,
-                        $chatId,
-                        $listMessage,
-                        $replyTo
-                    );
-
-                    \Log::info('API: WAHA sendList response', [
-                        'success' => $result['success'] ?? false,
-                        'error' => $result['error'] ?? null,
-                        'data' => $result['data'] ?? null,
-                    ]);
-
-                    // Store list data as JSON
+                    // List messages don't charge quota (free)
+                    $jobParams['listMessage'] = $listMessage;
+                    $jobParams['replyTo'] = $replyTo;
                     $messageData['content'] = json_encode([
                         'message' => $listMessage,
                         'reply_to' => $replyTo,
@@ -582,127 +377,97 @@ class MessageApiController extends Controller
                     break;
             }
 
-            if ($result && $result['success']) {
-                // Extract WhatsApp message ID - try multiple possible locations
-                // For button messages, id is in key.id
-                $whatsappId = $result['data']['id'] ?? 
-                             $result['data']['key']['id'] ?? 
-                             $result['data']['_data']['Info']['ID'] ?? 
-                             $result['data']['messageId'] ?? 
-                             null;
-                
-                if (is_array($whatsappId)) {
-                    $whatsappId = json_encode($whatsappId);
-                }
-                
-                // Check ack status from WAHA response
-                // For button messages, status might be "PENDING" string instead of ack number
-                $statusFromResponse = $result['data']['status'] ?? null;
-                $ack = $result['data']['ack'] ?? 
-                       $result['data']['_data']['ack'] ?? 
-                       $result['data']['_data']['Info']['ack'] ?? 
-                       null;
-                $status = 'sent';
-                
-                // ack: 0 = pending, 1 = delivered, 2 = read, 3 = played
-                // For button messages, status might be "PENDING" string
-                // If ack is 0 or status is "PENDING", message might not be actually sent yet
-                if ($ack === 0 || $statusFromResponse === 'PENDING') {
-                    $status = 'pending';
-                    \Log::warning('API: Message sent but status is pending', [
-                        'session_id' => $session->session_id,
-                        'chat_id' => $chatId,
-                        'whatsapp_message_id' => $whatsappId,
-                        'ack' => $ack,
-                        'status_from_response' => $statusFromResponse,
-                    ]);
-                }
-                
-                $messageData['whatsapp_message_id'] = $whatsappId;
-                $messageData['status'] = $status;
-                $messageData['sent_at'] = now();
+            // Create message record first
+            $message = Message::create($messageData);
+            $messageId = $message->id;
 
-                $message = Message::create($messageData);
-                $messageId = $message->id;
-
-                // Log quota usage after successful send
-                if ($quotaDeducted && $quotaType && $quotaAmount > 0) {
-                    QuotaUsageLog::create([
-                        'user_id' => $request->user->id,
-                        'message_id' => $messageId,
-                        'quota_type' => $quotaType,
-                        'amount' => $quotaAmount,
-                        'message_type' => $messageType,
-                        'description' => $this->getQuotaDescription($messageType, $quotaType),
-                    ]);
+            // Deduct quota if needed (for messages that charge quota)
+            if ($quotaDeducted && $quotaType && $quotaAmount > 0) {
+                // Deduct quota
+                if ($quotaType === 'text_quota') {
+                    if (!$userQuota->deductTextQuota(1)) {
+                        throw new \Exception('Insufficient text quota');
+                    }
+                } elseif ($quotaType === 'free_text_quota') {
+                    if (!$userQuota->deductFreeTextQuota(1)) {
+                        throw new \Exception('Insufficient free text quota');
+                    }
+                } elseif ($quotaType === 'multimedia_quota') {
+                    if (!$userQuota->deductMultimediaQuota(1)) {
+                        throw new \Exception('Insufficient multimedia quota');
+                    }
+                } elseif ($quotaType === 'balance') {
+                    if (!$userQuota->deductBalance($quotaAmount)) {
+                        throw new \Exception('Insufficient balance');
+                    }
                 }
 
-                $this->usageService->log($request, 200, $startTime);
-
-                \Log::info('API: Message sent successfully', [
-                    'message_id' => $message->id,
-                    'whatsapp_message_id' => $whatsappId,
-                    'status' => $status,
-                    'ack' => $ack,
+                // Log quota usage
+                QuotaUsageLog::create([
+                    'user_id' => $request->user->id,
+                    'message_id' => $messageId,
                     'quota_type' => $quotaType,
+                    'amount' => $quotaAmount,
+                    'message_type' => $messageType,
+                    'description' => $this->getQuotaDescription($messageType, $quotaType),
                 ]);
-
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'message_id' => $message->id,
-                        'whatsapp_message_id' => $result['data']['id'] ?? null,
-                        'status' => $status,
-                        'ack' => $ack,
-                        'to' => $normalizedNumber,
-                    ],
-                ], 201);
-            } else {
-                // Log error details
-                $errorMessage = $result['error'] ?? 'Failed to send message';
-                
-                // If quota was deducted but message failed, refund it
-                if ($quotaDeducted && $quotaType && $quotaAmount > 0) {
-                    // Create message first to get ID for log deletion
-                    $messageData['status'] = 'failed';
-                    $messageData['error_message'] = is_array($errorMessage) ? json_encode($errorMessage) : $errorMessage;
-                    $failedMessage = Message::create($messageData);
-                    $this->refundQuota($userQuota, $quotaType, $quotaAmount, $failedMessage->id);
-                } else {
-                    // Create message even if no quota was deducted
-                    $messageData['status'] = 'failed';
-                    $messageData['error_message'] = is_array($errorMessage) ? json_encode($errorMessage) : $errorMessage;
-                    Message::create($messageData);
-                }
-                
-                // Check if error indicates feature not supported by WAHA engine
-                if (stripos($errorMessage, 'not implemented') !== false || 
-                    stripos($errorMessage, 'not supported') !== false ||
-                    stripos($errorMessage, 'WEBJS') !== false) {
-                    $errorMessage = 'This feature is not supported by your WAHA engine. Please check WAHA documentation for supported features. Original error: ' . ($result['error'] ?? 'Unknown error');
-                }
-                
-                // Check if error is related to video URL access (403)
-                if (stripos($errorMessage, '403') !== false || stripos($errorMessage, 'forbidden') !== false) {
-                    $errorMessage = 'Video URL is not accessible. The server hosting the video is blocking access (403 Forbidden). Please ensure the video URL is publicly accessible without authentication or IP restrictions.';
-                }
-                
-                \Log::error('API: Failed to send message', [
-                    'error' => $errorMessage,
-                    'result' => $result,
-                    'session_id' => $session->session_id,
-                    'chat_id' => $chatId,
-                    'quota_refunded' => $quotaDeducted,
-                ]);
-                
-                $this->usageService->log($request, 500, $startTime);
-                return response()->json([
-                    'success' => false,
-                    'error' => $errorMessage,
-                ], 500);
             }
+
+            // Dispatch job to send message asynchronously
+            SendMessageJob::dispatch(
+                $messageId,
+                $jobParams['sessionId'],
+                $jobParams['chatId'],
+                $jobParams['messageType'],
+                $jobParams['content'],
+                null, // mediaPath
+                null, // documentPath
+                $jobParams['documentUrl'],
+                $jobParams['imageUrl'],
+                $jobParams['videoUrl'],
+                $jobParams['caption'],
+                $jobParams['chatType'],
+                $jobParams['pollName'],
+                $jobParams['pollOptions'],
+                $jobParams['multipleAnswers'],
+                $jobParams['fallbackToText'],
+                $jobParams['buttons'],
+                $jobParams['header'],
+                $jobParams['footer'],
+                $jobParams['headerImage'],
+                $jobParams['listMessage'],
+                $jobParams['replyTo'],
+                $jobParams['filename'],
+                $jobParams['asNote'],
+                $jobParams['convert'],
+                $quotaDeducted, // quotaAlreadyDeducted
+                $quotaType,
+                $quotaAmount
+            );
+
+            \Log::info('API: Message job dispatched', [
+                'message_id' => $messageId,
+                'session_id' => $session->session_id,
+                'chat_id' => $chatId,
+                'user_id' => $request->user->id,
+                'message_type' => $messageType,
+                'quota_type' => $quotaType,
+            ]);
+
+            $this->usageService->log($request, 201, $startTime);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'message_id' => $messageId,
+                    'status' => 'pending',
+                    'to' => $normalizedNumber,
+                    'message' => 'Message queued for sending',
+                ],
+            ], 201);
+
         } catch (\Exception $e) {
-            // If quota was deducted but exception occurred, refund it
+            // If quota was deducted but exception occurred before job dispatch, refund it
             if (isset($quotaDeducted) && $quotaDeducted && isset($quotaType) && isset($quotaAmount) && isset($userQuota)) {
                 try {
                     $this->refundQuota($userQuota, $quotaType, $quotaAmount);

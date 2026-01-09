@@ -11,6 +11,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Queue\Middleware\ThrottlesExceptions;
 
 class WebhookDelivery implements ShouldQueue
 {
@@ -19,6 +21,17 @@ class WebhookDelivery implements ShouldQueue
     public $tries = 3;
     public $timeout = 30;
     public $backoff = [5, 15, 30];
+    
+    /**
+     * Get the middleware the job should pass through.
+     */
+    public function middleware(): array
+    {
+        return [
+            // Throttle exceptions: if webhook fails 5 times in 1 minute, delay for 1 minute
+            (new ThrottlesExceptions(5, 1))->backoff(60),
+        ];
+    }
 
     protected $webhookId;
     protected $payload;
@@ -47,13 +60,48 @@ class WebhookDelivery implements ShouldQueue
             return;
         }
 
-        try {
-            Log::info('WebhookDelivery Job: Delivering webhook', [
+        // Validate webhook URL - skip if it points to internal application routes
+        if ($this->isInternalUrl($webhook->url)) {
+            Log::warning('WebhookDelivery Job: Skipping webhook with internal URL', [
                 'webhook_id' => $this->webhookId,
                 'url' => $webhook->url,
-                'event' => $this->event,
+                'message' => 'Webhook URL points to internal application route. Please update webhook URL to an external endpoint.',
             ]);
+            
+            // Log as failed delivery
+            WebhookLog::create([
+                'webhook_id' => $webhook->id,
+                'event_type' => $this->event,
+                'payload' => $this->payload,
+                'response_status' => 0,
+                'error_message' => 'Webhook URL points to internal application route. Use external URL instead.',
+                'triggered_at' => now(),
+            ]);
+            
+            return;
+        }
 
+        // Rate limiting per webhook URL to prevent overwhelming destination servers
+        $rateLimitKey = 'webhook-url:' . md5($webhook->url);
+        $maxRequestsPerMinute = 30; // Max 30 requests per minute per URL
+        
+        if (RateLimiter::tooManyAttempts($rateLimitKey, $maxRequestsPerMinute)) {
+            $seconds = RateLimiter::availableIn($rateLimitKey);
+            Log::warning('WebhookDelivery Job: Rate limit exceeded for webhook URL', [
+                'webhook_id' => $this->webhookId,
+                'url' => $webhook->url,
+                'retry_after_seconds' => $seconds,
+            ]);
+            
+            // Release job back to queue with delay
+            $this->release($seconds);
+            return;
+        }
+        
+        // Increment rate limiter
+        RateLimiter::hit($rateLimitKey, 60); // 60 seconds window
+
+        try {
             $response = Http::timeout(10)
                 ->withHeaders([
                     'User-Agent' => 'WAHA-SaaS/1.0',
@@ -77,11 +125,6 @@ class WebhookDelivery implements ShouldQueue
             if ($success) {
                 $webhook->update([
                     'last_triggered_at' => now(),
-                ]);
-
-                Log::info('WebhookDelivery Job: Webhook delivered successfully', [
-                    'webhook_id' => $this->webhookId,
-                    'status_code' => $statusCode,
                 ]);
             } else {
                 $webhook->increment('failure_count');
@@ -113,6 +156,39 @@ class WebhookDelivery implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    /**
+     * Check if URL points to internal application routes
+     */
+    protected function isInternalUrl(string $url): bool
+    {
+        $appUrl = config('app.url', 'http://localhost:8000');
+        $parsedAppUrl = parse_url($appUrl);
+        $parsedWebhookUrl = parse_url($url);
+        
+        if (!isset($parsedWebhookUrl['host']) || !isset($parsedAppUrl['host'])) {
+            return false;
+        }
+        
+        $appHost = str_replace(['www.', 'http://', 'https://'], '', $parsedAppUrl['host']);
+        $webhookHost = str_replace(['www.', 'http://', 'https://'], '', $parsedWebhookUrl['host']);
+        
+        // Check if hosts match (localhost, 127.0.0.1, or same domain)
+        $hostsMatch = $webhookHost === $appHost || 
+                     ($webhookHost === 'localhost' && $appHost === 'localhost') ||
+                     ($webhookHost === '127.0.0.1' && $appHost === '127.0.0.1');
+        
+        if (!$hostsMatch) {
+            return false;
+        }
+        
+        // Check if path contains internal routes
+        $path = $parsedWebhookUrl['path'] ?? '';
+        return str_starts_with($path, '/webhooks') || 
+               str_starts_with($path, '/webhook/create') ||
+               str_starts_with($path, '/sessions') ||
+               str_starts_with($path, '/messages');
     }
 
     /**

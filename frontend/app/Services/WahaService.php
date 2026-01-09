@@ -773,9 +773,55 @@ class WahaService
 
             $errorData = $response->json();
             $errorMessage = $errorData['message'] ?? $errorData['error'] ?? 'Failed to send message';
+            $statusCode = $response->status();
+            
+            // Check if error indicates WAHA Core limitation
+            if ($statusCode === 422 && 
+                (stripos($errorMessage, 'WAHA Core support only') !== false || 
+                 stripos($errorMessage, 'default session') !== false) &&
+                $sessionId !== 'default') {
+                
+                Log::info('WAHA Core detected in sendText: Retrying with default session', [
+                    'original_session_id' => $sessionId,
+                ]);
+                
+                // Retry with 'default' session name
+                $retryPayload = [
+                    'session' => 'default',
+                    'chatId' => $chatId,
+                    'text' => $text,
+                ];
+                
+                $retryResponse = $this->httpClient()->post($url, $retryPayload);
+                
+                Log::info('WAHA: sendText retry response', [
+                    'status' => $retryResponse->status(),
+                    'successful' => $retryResponse->successful(),
+                    'body' => $retryResponse->body(),
+                ]);
+                
+                if ($retryResponse->successful()) {
+                    $responseData = $retryResponse->json();
+                    Log::info('WAHA: sendText success with default session (WAHA Core)', [
+                        'original_session_id' => $sessionId,
+                        'waha_session_name' => 'default',
+                        'response_data' => $responseData,
+                    ]);
+                    return [
+                        'success' => true,
+                        'data' => $responseData,
+                        'waha_session_name' => 'default',
+                    ];
+                }
+                
+                // If retry also failed, update error data and message
+                $errorData = $retryResponse->json();
+                $errorMessage = $errorData['message'] ?? $errorData['error'] ?? 'Failed to send message even with default session';
+                $statusCode = $retryResponse->status();
+            }
             
             Log::error('WAHA: sendText failed', [
-                'status' => $response->status(),
+                'status' => $statusCode,
                 'error' => $errorMessage,
                 'response' => $errorData,
             ]);
@@ -2512,6 +2558,59 @@ class WahaService
             } elseif (is_array($errorData)) {
                 // If errorData itself is an array of error messages
                 $errorMessage = implode(', ', $errorData);
+            }
+
+            // Check if error is about WAHA Core only supporting 'default' session
+            if ($response->status() === 422 && 
+                (stripos($errorMessage, 'WAHA Core support only') !== false || 
+                 stripos($errorMessage, 'default session') !== false) &&
+                $sessionId !== 'default') {
+                
+                Log::warning('WAHA Core detected in getMessages: Retrying with default session name', [
+                    'original_session_id' => $sessionId,
+                    'retry_with' => 'default',
+                    'error' => $errorMessage,
+                ]);
+                
+                // Retry with 'default' session name for WAHA Core
+                $params['session'] = 'default';
+                
+                Log::info('WAHA: Retrying getMessages with default session name', [
+                    'original_session_id' => $sessionId,
+                    'waha_session_name' => 'default',
+                    'chatId' => $chatId,
+                    'limit' => $limit,
+                ]);
+                
+                // Retry the request with 'default' session name
+                $response = $this->httpClient()
+                    ->get($url, $params);
+                
+                if ($response->successful()) {
+                    $responseData = $response->json();
+                    Log::info('WAHA: getMessages success with default session name (WAHA Core)', [
+                        'original_session_id' => $sessionId,
+                        'waha_session_name' => 'default',
+                        'messages_count' => is_array($responseData) ? count($responseData) : 0,
+                    ]);
+                    
+                    return [
+                        'success' => true,
+                        'data' => $responseData,
+                    ];
+                }
+                
+                // If retry with default also failed, continue to return error below
+                $errorData = $response->json();
+                if (isset($errorData['message'])) {
+                    $errorMessage = is_array($errorData['message']) 
+                        ? implode(', ', $errorData['message']) 
+                        : $errorData['message'];
+                } elseif (isset($errorData['error'])) {
+                    $errorMessage = is_array($errorData['error']) 
+                        ? implode(', ', $errorData['error']) 
+                        : $errorData['error'];
+                }
             }
 
             Log::error('WAHA: getMessages failed', [

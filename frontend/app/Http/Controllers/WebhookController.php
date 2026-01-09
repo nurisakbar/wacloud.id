@@ -36,7 +36,38 @@ class WebhookController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'url' => 'required|url|max:500',
+            'url' => [
+                'required',
+                'url',
+                'max:500',
+                function ($attribute, $value, $fail) {
+                    // Prevent webhook URLs pointing to internal application routes
+                    $appUrl = config('app.url', 'http://localhost:8000');
+                    $parsedAppUrl = parse_url($appUrl);
+                    $parsedWebhookUrl = parse_url($value);
+                    
+                    // Check if webhook URL points to the same domain as the application
+                    if (isset($parsedWebhookUrl['host']) && isset($parsedAppUrl['host'])) {
+                        $appHost = str_replace(['www.', 'http://', 'https://'], '', $parsedAppUrl['host']);
+                        $webhookHost = str_replace(['www.', 'http://', 'https://'], '', $parsedWebhookUrl['host']);
+                        
+                        // Check if hosts match (localhost, 127.0.0.1, or same domain)
+                        if ($webhookHost === $appHost || 
+                            ($webhookHost === 'localhost' && $appHost === 'localhost') ||
+                            ($webhookHost === '127.0.0.1' && $appHost === '127.0.0.1')) {
+                            
+                            // Check if path contains internal routes
+                            $path = $parsedWebhookUrl['path'] ?? '';
+                            if (str_starts_with($path, '/webhooks') || 
+                                str_starts_with($path, '/webhook/create') ||
+                                str_starts_with($path, '/sessions') ||
+                                str_starts_with($path, '/messages')) {
+                                $fail('Webhook URL tidak boleh mengarah ke route internal aplikasi. Gunakan URL eksternal atau webhook.site untuk testing.');
+                            }
+                        }
+                    }
+                },
+            ],
             'session_id' => 'nullable|exists:whatsapp_sessions,id',
             'events' => 'required|array',
             'events.*' => 'in:message,status,session',
@@ -93,7 +124,38 @@ class WebhookController extends Controller
         
         $request->validate([
             'name' => 'required|string|max:255',
-            'url' => 'required|url|max:500',
+            'url' => [
+                'required',
+                'url',
+                'max:500',
+                function ($attribute, $value, $fail) {
+                    // Prevent webhook URLs pointing to internal application routes
+                    $appUrl = config('app.url', 'http://localhost:8000');
+                    $parsedAppUrl = parse_url($appUrl);
+                    $parsedWebhookUrl = parse_url($value);
+                    
+                    // Check if webhook URL points to the same domain as the application
+                    if (isset($parsedWebhookUrl['host']) && isset($parsedAppUrl['host'])) {
+                        $appHost = str_replace(['www.', 'http://', 'https://'], '', $parsedAppUrl['host']);
+                        $webhookHost = str_replace(['www.', 'http://', 'https://'], '', $parsedWebhookUrl['host']);
+                        
+                        // Check if hosts match (localhost, 127.0.0.1, or same domain)
+                        if ($webhookHost === $appHost || 
+                            ($webhookHost === 'localhost' && $appHost === 'localhost') ||
+                            ($webhookHost === '127.0.0.1' && $appHost === '127.0.0.1')) {
+                            
+                            // Check if path contains internal routes
+                            $path = $parsedWebhookUrl['path'] ?? '';
+                            if (str_starts_with($path, '/webhooks') || 
+                                str_starts_with($path, '/webhook/create') ||
+                                str_starts_with($path, '/sessions') ||
+                                str_starts_with($path, '/messages')) {
+                                $fail('Webhook URL tidak boleh mengarah ke route internal aplikasi. Gunakan URL eksternal atau webhook.site untuk testing.');
+                            }
+                        }
+                    }
+                },
+            ],
             'session_id' => 'nullable|exists:whatsapp_sessions,id',
             'events' => 'required|array',
             'events.*' => 'in:message,status,session',
@@ -236,17 +298,6 @@ class WebhookController extends Controller
          * Endpoint: POST /webhook/receive/{sessionId}
          */
         
-        // Log webhook receipt from WAHA built-in webhook
-        Log::info('Built-in webhook: Received event from WAHA', [
-            'session_id' => $sessionId,
-            'event' => $request->input('event'),
-            'payload_keys' => array_keys($request->input('payload', [])),
-            'method' => $request->method(),
-            'url' => $request->fullUrl(),
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
-
         $session = WhatsAppSession::where('session_id', $sessionId)->first();
         if (!$session) {
             Log::warning('Webhook: Device not found', ['session_id' => $sessionId]);
@@ -314,14 +365,8 @@ class WebhookController extends Controller
         ];
 
         foreach ($webhooks as $webhook) {
-            // Dispatch webhook delivery job
+            // Dispatch webhook delivery job (using default queue)
             WebhookDelivery::dispatch($webhook->id, $event, $payload);
-            
-            Log::info('Webhook delivery job dispatched', [
-                'webhook_id' => $webhook->id,
-                'url' => $webhook->url,
-                'event' => $event,
-            ]);
         }
 
         return response()->json(['success' => true]);
@@ -350,7 +395,6 @@ class WebhookController extends Controller
                 ->first();
 
             if ($existingMessage) {
-                Log::info('Webhook: Message already exists', ['message_id' => $whatsappMessageId]);
                 return;
             }
 
@@ -362,6 +406,50 @@ class WebhookController extends Controller
             // Convert @s.whatsapp.net to @c.us if needed
             $fromNumber = $this->extractPhoneNumber($from);
             $toNumber = $this->extractPhoneNumber($to);
+            
+            // For incoming messages, if to_number is null, use session's phone number
+            // For outgoing messages, if from_number is null, use session's phone number
+            
+            // Helper function to get session phone number
+            $getSessionPhoneNumber = function() use ($session) {
+                // Try phone_number field first
+                if ($session->phone_number) {
+                    return $this->extractPhoneNumber($session->phone_number);
+                }
+                
+                // Try device_info['phone']
+                if (!empty($session->device_info['phone'])) {
+                    return $this->extractPhoneNumber($session->device_info['phone']);
+                }
+                
+                // Try device_info['wid'] (format: 6281234567890@c.us)
+                if (!empty($session->device_info['wid'])) {
+                    $wid = $session->device_info['wid'];
+                    if (is_string($wid) && strpos($wid, '@') !== false) {
+                        return $this->extractPhoneNumber($wid);
+                    }
+                }
+                
+                return null;
+            };
+            
+            $sessionPhoneNumber = $getSessionPhoneNumber();
+            
+            if ($isFromMe) {
+                // Outgoing message: from_number should be session's phone number
+                if (!$fromNumber && $sessionPhoneNumber) {
+                    $fromNumber = $sessionPhoneNumber;
+                }
+            } else {
+                // Incoming message: to_number should be session's phone number
+                if (!$toNumber && $sessionPhoneNumber) {
+                    $toNumber = $sessionPhoneNumber;
+                }
+                // Also try to extract from _data if available (might contain recipient info)
+                if (!$toNumber && !empty($payload['_data']['key']['remoteJidAlt'])) {
+                    $toNumber = $this->extractPhoneNumber($payload['_data']['key']['remoteJidAlt']);
+                }
+            }
 
             // Determine message type
             $messageType = $this->determineMessageType($payload);
@@ -421,6 +509,26 @@ class WebhookController extends Controller
             // For outgoing messages, start with pending (will be updated by message.ack)
             $status = $isFromMe ? 'pending' : 'delivered';
 
+            // Validate that we have required phone numbers
+            if (!$fromNumber) {
+                Log::warning('Webhook: Cannot determine from_number for message', [
+                    'whatsapp_message_id' => $whatsappMessageId,
+                    'direction' => $direction,
+                    'payload' => $payload,
+                ]);
+                return;
+            }
+            
+            if (!$toNumber) {
+                Log::warning('Webhook: Cannot determine to_number for message', [
+                    'whatsapp_message_id' => $whatsappMessageId,
+                    'direction' => $direction,
+                    'payload' => $payload,
+                    'session_phone_number' => $session->phone_number,
+                ]);
+                return;
+            }
+
             // Create message record
             Message::create([
                 'user_id' => $session->user_id,
@@ -439,16 +547,6 @@ class WebhookController extends Controller
                 'sent_at' => $createdAt,
                 'created_at' => $createdAt,
                 'updated_at' => $createdAt,
-            ]);
-
-            Log::info('Built-in webhook: Message automatically saved to database', [
-                'whatsapp_message_id' => $whatsappMessageId,
-                'direction' => $direction,
-                'from' => $fromNumber,
-                'to' => $toNumber,
-                'type' => $messageType,
-                'session_id' => $session->session_id,
-                'user_id' => $session->user_id,
             ]);
         } catch (\Exception $e) {
             Log::error('Webhook: Error handling incoming message', [
@@ -498,12 +596,6 @@ class WebhookController extends Controller
                     'read_at' => now(),
                 ]);
             }
-
-            Log::info('Webhook: Message ack updated', [
-                'whatsapp_message_id' => $whatsappMessageId,
-                'ack' => $ack,
-                'status' => $status,
-            ]);
         } catch (\Exception $e) {
             Log::error('Webhook: Error handling message ack', [
                 'error' => $e->getMessage(),
@@ -630,11 +722,7 @@ class WebhookController extends Controller
             if ($message) {
                 $reactionText = $payload['reaction']['text'] ?? '';
                 // You can store reaction in a separate table or add a reactions column
-                // For now, we'll just log it
-                Log::info('Webhook: Message reaction', [
-                    'message_id' => $reactionMessageId,
-                    'reaction' => $reactionText,
-                ]);
+                // For now, we'll just skip logging
             }
         } catch (\Exception $e) {
             Log::error('Webhook: Error handling message reaction', [
@@ -665,10 +753,6 @@ class WebhookController extends Controller
                 $message->update([
                     'content' => $newContent,
                     'updated_at' => now(),
-                ]);
-
-                Log::info('Webhook: Message edited', [
-                    'whatsapp_message_id' => $whatsappMessageId,
                 ]);
             }
         } catch (\Exception $e) {
@@ -705,10 +789,6 @@ class WebhookController extends Controller
                     'status' => 'revoked',
                     'updated_at' => now(),
                 ]);
-
-                Log::info('Webhook: Message revoked', [
-                    'whatsapp_message_id' => $whatsappMessageId,
-                ]);
             }
         } catch (\Exception $e) {
             Log::error('Webhook: Error handling message revoked', [
@@ -724,34 +804,14 @@ class WebhookController extends Controller
      */
     public function wacloud(Request $request)
     {
-        // Log webhook receipt from WACloud
-        Log::info('WACloud webhook: Received webhook', [
-            'method' => $request->method(),
-            'url' => $request->fullUrl(),
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'headers' => $request->headers->all(),
-            'body' => $request->all(),
-        ]);
-
         try {
             // Get webhook data from request
             $data = $request->all();
-            
-            // Log the webhook payload
-            Log::info('WACloud webhook: Payload received', [
-                'data' => $data,
-            ]);
 
             // Process WACloud webhook data
             // Adjust this based on WACloud webhook format
             $event = $data['event'] ?? $data['type'] ?? 'unknown';
             $payload = $data['data'] ?? $data['payload'] ?? $data;
-
-            Log::info('WACloud webhook: Processing event', [
-                'event' => $event,
-                'payload' => $payload,
-            ]);
 
             // TODO: Process WACloud webhook events here
             // Examples:

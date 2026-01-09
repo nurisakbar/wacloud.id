@@ -542,34 +542,33 @@ class MessageController extends Controller
             }
 
             return DataTables::of($query)
-            ->addColumn('type_badge', function ($message) {
-                // Different colors for different message types
-                $typeColors = [
-                    'text' => 'bg-primary',
-                    'image' => 'bg-info',
-                    'video' => 'bg-danger',
-                    'document' => 'bg-secondary',
-                    'poll' => 'bg-warning',
-                    'button' => 'bg-success',
-                    'list' => 'bg-purple',
-                ];
+            ->addColumn('content_preview', function ($message) {
+                $preview = '';
                 
-                $typeColor = $typeColors[$message->message_type] ?? 'bg-dark';
-                $badges = '<span class="badge ' . $typeColor . ' text-white" style="font-weight: 600;">' . ucfirst($message->message_type) . '</span> ';
+                // Add content preview
+                if ($message->message_type === 'text') {
+                    $content = $message->content ?? __('No content');
+                    $preview .= '<span class="message-preview">' . \Illuminate\Support\Str::limit(strip_tags($content), 100) . '</span>';
+                } elseif ($message->message_type === 'image') {
+                    $preview .= '<span class="text-muted">' . __('Image') . '</span>';
+                    if ($message->caption) {
+                        $preview .= '<br><small class="text-muted">' . \Illuminate\Support\Str::limit($message->caption, 50) . '</small>';
+                    }
+                } elseif ($message->message_type === 'video') {
+                    $preview .= '<span class="text-muted">' . __('Video') . '</span>';
+                    if ($message->caption) {
+                        $preview .= '<br><small class="text-muted">' . \Illuminate\Support\Str::limit($message->caption, 50) . '</small>';
+                    }
+                } elseif ($message->message_type === 'document') {
+                    $preview .= '<span class="text-muted">' . __('Document') . '</span>';
+                    if ($message->caption) {
+                        $preview .= '<br><small class="text-muted">' . \Illuminate\Support\Str::limit($message->caption, 50) . '</small>';
+                    }
+                } else {
+                    $preview .= '<span class="text-muted">' . ucfirst($message->message_type) . '</span>';
+                }
                 
-                if ($message->isIncoming()) {
-                    $badges .= '<span class="badge bg-primary text-white" style="font-weight: 600;">Incoming</span>';
-                } else {
-                    $badges .= '<span class="badge bg-success text-white" style="font-weight: 600;">Outgoing</span>';
-                }
-                return $badges;
-            })
-            ->addColumn('from_to', function ($message) {
-                if ($message->isIncoming()) {
-                    return '<strong>From:</strong> ' . ($message->from_number ?? 'N/A');
-                } else {
-                    return '<strong>To:</strong> ' . ($message->to_number ?? 'N/A');
-                }
+                return $preview;
             })
             ->addColumn('status_badge', function ($message) {
                 $status = $message->status;
@@ -605,20 +604,31 @@ class MessageController extends Controller
                         break;
                 }
                 
-                return '<span class="badge ' . $badgeClass . ' ' . $textColor . '" style="font-weight: 600;">' . $label . '</span>';
-            })
-            ->addColumn('session_name', function ($message) {
-                return $message->session->session_name ?? 'N/A';
+                $statusBadge = '<span class="badge ' . $badgeClass . ' ' . $textColor . '" style="font-weight: 600;">' . $label . '</span>';
+                
+                // Add direction indicator below status
+                $directionBadge = '';
+                if ($message->isIncoming()) {
+                    $directionBadge = '<br><span class="badge bg-primary text-white mt-1" style="font-size: 0.75em; font-weight: 500;"><i class="fas fa-inbox"></i> Incoming</span>';
+                } else {
+                    $directionBadge = '<br><span class="badge bg-success text-white mt-1" style="font-size: 0.75em; font-weight: 500;"><i class="fas fa-paper-plane"></i> Outgoing</span>';
+                }
+                
+                return '<div>' . $statusBadge . $directionBadge . '</div>';
             })
             ->addColumn('formatted_date', function ($message) {
-                return $message->created_at->format('Y-m-d H:i');
+                $date = $message->created_at;
+                return '<div class="text-nowrap">
+                    <div class="fw-bold">' . $date->format('d/m/Y') . '</div>
+                    <small class="text-muted">' . $date->format('H:i:s') . '</small>
+                </div>';
             })
             ->addColumn('actions', function ($message) {
-                return '<a href="' . route('messages.show', $message) . '" class="btn btn-sm btn-info">
+                return '<a href="' . route('messages.show', $message) . '" class="btn btn-sm btn-info" title="' . __('View Details') . '">
                     <i class="fas fa-eye"></i>
                 </a>';
             })
-            ->rawColumns(['type_badge', 'from_to', 'status_badge', 'actions'])
+            ->rawColumns(['content_preview', 'status_badge', 'formatted_date', 'actions'])
             ->make(true);
         } catch (\Exception $e) {
             \Log::error('DataTables error: ' . $e->getMessage(), [

@@ -90,12 +90,10 @@
                         <table id="messagesTable" class="table table-striped table-hover" style="width:100%">
                             <thead>
                                 <tr>
-                                    <th>{{ __('Type') }}</th>
-                                    <th>{{ __('From/To') }}</th>
-                                    <th>{{ __('Status') }}</th>
-                                    <th>{{ __('Device') }}</th>
-                                    <th>{{ __('Date') }}</th>
-                                    <th>{{ __('Actions') }}</th>
+                                    <th width="15%">{{ __('Waktu') }}</th>
+                                    <th width="60%">{{ __('Pesan') }}</th>
+                                    <th width="15%">{{ __('Status') }}</th>
+                                    <th width="10%" class="text-center">{{ __('Actions') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -161,6 +159,21 @@
         background-color: #6c757d !important;
         color: #fff !important;
     }
+    
+    .message-preview {
+        display: inline-block;
+        max-width: 100%;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+    
+    #messagesTable td {
+        vertical-align: middle;
+    }
+    
+    #messagesTable .message-preview {
+        line-height: 1.5;
+    }
 </style>
 @endpush
 
@@ -194,14 +207,12 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { data: 'type_badge', name: 'type_badge', orderable: false, searchable: false },
-            { data: 'from_to', name: 'from_to', orderable: false, searchable: false },
-            { data: 'status_badge', name: 'status', orderable: false, searchable: false },
-            { data: 'session_name', name: 'session_name', orderable: false },
             { data: 'formatted_date', name: 'created_at', orderable: true },
-            { data: 'actions', name: 'actions', orderable: false, searchable: false }
+            { data: 'content_preview', name: 'content', orderable: false, searchable: true },
+            { data: 'status_badge', name: 'status', orderable: false, searchable: false },
+            { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-center' }
         ],
-        order: [[4, 'desc']], // Order by date (column 4) descending
+        order: [[0, 'desc']], // Order by date (column 0) descending
         pageLength: 10,
         language: {
             processing: "Memproses...",
