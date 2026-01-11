@@ -44,75 +44,66 @@
                                         </h6>
                                         
                                         @php
-                                            $userApiKeys = session('user_api_keys', []);
-                                            $plainKey = $userApiKeys[$apiKey->id] ?? null;
+                                            // Get plain key directly from database
+                                            // Try multiple ways to get the plain key
+                                            $plainKey = $apiKey->plain_key;
                                             
-                                            // Also check flash for backward compatibility
-                                            if (!$plainKey && session('api_key_plain') && $apiKey->id === session('api_key_id')) {
-                                                $plainKey = session('api_key_plain');
+                                            // If accessor returns null, check if encrypted value exists
+                                            if (!$plainKey) {
+                                                $encrypted = $apiKey->getAttributes()['plain_key_encrypted'] ?? null;
+                                                if ($encrypted) {
+                                                    try {
+                                                        $plainKey = \Illuminate\Support\Facades\Crypt::decryptString($encrypted);
+                                                    } catch (\Exception $e) {
+                                                        $plainKey = null;
+                                                    }
+                                                }
                                             }
+                                            
+                                            $plainKey = $plainKey ? trim($plainKey) : null;
+                                            $keyLength = $plainKey ? strlen($plainKey) : 0;
                                         @endphp
                                         
-                                        @if($plainKey)
-                                            {{-- Show full API key by default, can be toggled to hide --}}
-                                            @php
-                                                // Ensure plain key is trimmed and clean
-                                                $plainKey = trim($plainKey);
-                                                $keyLength = strlen($plainKey);
-                                            @endphp
-                                            <div class="input-group mb-3">
-                                                <input type="text" 
-                                                       class="form-control font-monospace" 
-                                                       id="apiKeyDisplay" 
-                                                       value="{{ $plainKey }}" 
-                                                       data-full-key="{{ $plainKey }}"
-                                                       readonly 
-                                                       onclick="this.select(); document.execCommand('copy');"
-                                                       style="font-size: 14px; letter-spacing: 1px; cursor: pointer;"
-                                                       title="Klik untuk select dan copy ({{ $keyLength }} karakter)">
-                                                <div class="input-group-append">
-                                                    <button class="btn btn-outline-secondary" 
-                                                            type="button" 
-                                                            id="toggleApiKey" 
-                                                            onclick="toggleApiKeyVisibility()"
-                                                            title="Sembunyikan/Tampilkan API Key">
-                                                        <i class="fas fa-eye-slash" id="toggleIcon"></i>
-                                                    </button>
-                                                    <button class="btn btn-primary" 
-                                                            type="button" 
-                                                            onclick="copyApiKey('apiKeyDisplay', this)" 
-                                                            style="min-width: 100px;">
-                                                        <i class="fas fa-copy mr-2"></i>Salin
-                                                    </button>
-                                                </div>
+                                        <div class="input-group mb-3">
+                                            <input type="text" 
+                                                   class="form-control font-monospace" 
+                                                   id="apiKeyDisplay" 
+                                                   value="{{ $plainKey ?: $apiKey->key_prefix . '...' }}" 
+                                                   data-full-key="{{ $plainKey ?: '' }}"
+                                                   readonly 
+                                                   onclick="selectAndCopyApiKey(this)"
+                                                   style="font-size: 14px; letter-spacing: 1px; cursor: {{ $plainKey ? 'text' : 'not-allowed' }}; background-color: {{ $plainKey ? '#fff' : '#f8f9fa' }}; color: {{ $plainKey ? '#000' : '#999' }};"
+                                                   title="{{ $plainKey ? "Klik untuk select semua dan copy ($keyLength karakter)" : 'Regenerate key untuk melihat API key lengkap' }}">
+                                            <div class="input-group-append">
+                                                <button class="btn btn-outline-secondary" 
+                                                        type="button" 
+                                                        id="toggleApiKey" 
+                                                        onclick="toggleApiKeyVisibility()"
+                                                        {{ !$plainKey ? 'disabled' : '' }}
+                                                        title="{{ $plainKey ? 'Sembunyikan/Tampilkan API Key' : 'Regenerate key terlebih dahulu' }}">
+                                                    <i class="fas fa-eye-slash" id="toggleIcon"></i>
+                                                </button>
+                                                <button class="btn btn-primary" 
+                                                        type="button" 
+                                                        onclick="copyApiKey('apiKeyDisplay', this)" 
+                                                        style="min-width: 100px;"
+                                                        {{ !$plainKey ? 'disabled' : '' }}
+                                                        title="{{ $plainKey ? 'Salin API Key' : 'Regenerate key terlebih dahulu' }}">
+                                                    <i class="fas fa-copy mr-2"></i>Salin
+                                                </button>
                                             </div>
+                                        </div>
+                                        
+                                        @if($plainKey)
                                             <small class="text-muted">
                                                 <i class="fas fa-lightbulb mr-1"></i>
-                                                Klik pada text box untuk select dan copy, atau gunakan tombol Salin. 
-                                                <strong>API key ini ({{ $keyLength }} karakter) siap digunakan langsung</strong> di header <code>X-Api-Key</code> untuk semua request API.
+                                                <strong>API key lengkap ({{ $keyLength }} karakter) ditampilkan di atas.</strong> Klik pada text box untuk select semua dan copy otomatis, atau gunakan tombol Salin. 
+                                                API key ini siap digunakan langsung di header <code>X-Api-Key</code> untuk semua request API.
                                             </small>
-                                            <div class="mt-2 p-2 bg-light rounded">
-                                                <small class="text-success">
-                                                    <i class="fas fa-check-circle mr-1"></i>
-                                                        <strong>Verifikasi:</strong> API key yang ditampilkan adalah plain key yang benar dan bisa langsung digunakan. 
-                                                    Format API key dimulai dengan <code>waha_</code> diikuti 59 karakter random (total 64 karakter). 
-                                                    Pastikan Anda copy seluruh key tanpa menambah atau mengurangi karakter apapun.
-                                                </small>
-                                            </div>
                                         @else
-                                            {{-- Plain key not in session - user needs to regenerate to see it --}}
-                                            <div class="alert alert-info">
+                                            <div class="alert alert-info mb-0">
                                                 <i class="fas fa-info-circle mr-2"></i>
-                                                <strong>API Key Anda sudah dibuat.</strong><br>
-                                                <small>Untuk melihat API key lengkap, silakan klik tombol "Regenerate Key" di atas. 
-                                                Key yang sudah ada akan tetap berfungsi sampai Anda regenerate.</small>
-                                            </div>
-                                            <div class="card border-left-secondary mt-3">
-                                                <div class="card-body">
-                                                    <div class="small text-gray-500 mb-1">Key Prefix</div>
-                                                    <div class="font-monospace font-weight-bold">{{ $apiKey->key_prefix }}...</div>
-                                                    <small class="text-muted">Gunakan prefix ini untuk mengidentifikasi key Anda</small>
-                                                </div>
+                                                <strong>API Key sudah dibuat.</strong> Klik tombol "Regenerate Key" di atas untuk melihat API key lengkap yang bisa di-copy.
                                             </div>
                                         @endif
                                     </div>
@@ -196,7 +187,7 @@
                                         <div class="alert alert-info mt-3 mb-0">
                                             <strong><i class="fas fa-check-circle mr-2"></i>Penting:</strong> 
                                             API key yang ditampilkan di atas adalah <strong>plain key yang siap digunakan langsung</strong>. 
-                                            Format API key: <code>waha_</code> + 59 karakter random (total 64 karakter). 
+                                            Format API key adalah 64 karakter random. 
                                             Copy seluruh key dan gunakan di header <code>X-Api-Key</code> tanpa modifikasi apapun.
                                         </div>
                                         <hr>
@@ -290,7 +281,55 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // Ensure API key textbox always shows full key (not masked)
+    const apiKeyInput = document.getElementById('apiKeyDisplay');
+    if (apiKeyInput) {
+        const fullKey = apiKeyInput.getAttribute('data-full-key');
+        if (fullKey && fullKey.length > 20 && !fullKey.endsWith('...')) {
+            // Always show full key, never masked
+            apiKeyInput.value = fullKey;
+            apiKeyInput.type = 'text';
+            apiKeyInput.style.color = '#000';
+        }
+    }
 });
+
+/**
+ * Select and copy API key when clicking on input field
+ */
+function selectAndCopyApiKey(input) {
+    const fullKey = input.getAttribute('data-full-key');
+    
+    // Check if plain key is available
+    if (!fullKey || fullKey.length < 20 || fullKey.endsWith('...')) {
+        showToast('Silakan regenerate key terlebih dahulu untuk melihat API key lengkap', 'error');
+        return;
+    }
+    
+    // Select the text
+    input.select();
+    input.setSelectionRange(0, 99999); // For mobile devices
+    
+    // Try to copy
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(fullKey.trim()).then(function() {
+                showToast('Berhasil disalin ke clipboard!', 'success');
+            }).catch(function(err) {
+                // Fallback to execCommand
+                document.execCommand('copy');
+                showToast('Berhasil disalin ke clipboard!', 'success');
+            });
+        } else {
+            document.execCommand('copy');
+            showToast('Berhasil disalin ke clipboard!', 'success');
+        }
+    } catch (err) {
+        console.error('Failed to copy:', err);
+        showToast('Gagal menyalin. Silakan gunakan tombol Salin.', 'error');
+    }
+}
 
 /**
  * Toggle API key visibility
@@ -302,6 +341,13 @@ function toggleApiKeyVisibility() {
     
     if (input) {
         const fullKey = input.getAttribute('data-full-key');
+        
+        // Check if plain key is available
+        if (!fullKey || fullKey.length < 20 || fullKey.endsWith('...')) {
+            showToast('Silakan regenerate key terlebih dahulu untuk melihat API key lengkap', 'error');
+            return;
+        }
+        
         const currentValue = input.value;
         const isMasked = currentValue.includes('•') || currentValue.length < fullKey.length;
         
@@ -338,10 +384,23 @@ function toggleApiKeyVisibility() {
 function copyApiKey(inputId, button) {
     const input = document.getElementById(inputId);
     if (input) {
+        // Check if button is disabled (meaning plain key is not available)
+        if (button.disabled) {
+            showToast('Silakan regenerate key terlebih dahulu untuk melihat API key lengkap', 'error');
+            return;
+        }
+        
         // Always copy the full key from data attribute or value
         // Trim to remove any whitespace that might have been added
         let fullKey = input.getAttribute('data-full-key') || input.value;
         fullKey = fullKey.trim(); // Remove any leading/trailing whitespace
+        
+        // Check if full key is empty or just contains prefix
+        if (!fullKey || fullKey.length < 20 || fullKey.endsWith('...')) {
+            showToast('Silakan regenerate key terlebih dahulu untuk melihat API key lengkap', 'error');
+            return;
+        }
+        
         copyText(fullKey, button);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ApiKey;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 class ApiKeyController extends Controller
@@ -23,10 +24,24 @@ class ApiKeyController extends Controller
         
         if (!$apiKey) {
             $apiKey = $this->createApiKey($user, 'My API Key');
+        } else {
+            // Auto-regenerate once if API key doesn't have plain_key_encrypted (old API key)
+            $hasPlainKey = !empty($apiKey->getAttributes()['plain_key_encrypted'] ?? null);
+            
+            if (!$hasPlainKey) {
+                $newKey = $this->generateApiKey();
+                $keyPrefix = substr($newKey, 0, 8);
+                $newKeyHash = hash('sha256', $newKey);
+                
+                $apiKey->update([
+                    'key' => $newKeyHash,
+                    'key_prefix' => $keyPrefix,
+                    'plain_key_encrypted' => Crypt::encryptString($newKey),
+                ]);
+                
+                $apiKey->refresh();
+            }
         }
-        // Note: We don't regenerate if plain key is not in session
-        // Plain key is only shown when newly created or regenerated
-        // If user wants to see their key again, they must regenerate it explicitly
         
         return view('api-keys.index', compact('apiKey'));
     }
@@ -50,21 +65,16 @@ class ApiKeyController extends Controller
             // Regenerate existing key
             $newKey = $this->generateApiKey();
             $keyPrefix = substr($newKey, 0, 8);
+            $newKeyHash = hash('sha256', $newKey);
             
+            // Update API key with plain key encrypted in database
+            // Store encrypted value directly to ensure it's saved
             $apiKey->update([
-                'key' => hash('sha256', $newKey),
+                'key' => $newKeyHash,
                 'key_prefix' => $keyPrefix,
+                'plain_key_encrypted' => Crypt::encryptString($newKey),
                 'last_used_at' => null, // Reset last used
             ]);
-            
-            // Store the plain key in session permanently
-            $userApiKeys = session('user_api_keys', []);
-            $userApiKeys[$apiKey->id] = $newKey;
-            session(['user_api_keys' => $userApiKeys]);
-            
-            // Also keep flash for backward compatibility
-            session()->flash('api_key_plain', $newKey);
-            session()->flash('api_key_id', $apiKey->id);
         }
         
         return redirect()->route('api-keys.index')->with('success', 'API key berhasil di-regenerate. Key lama tidak akan berfungsi lagi.');
@@ -87,22 +97,17 @@ class ApiKeyController extends Controller
         // Generate API key
         $key = $this->generateApiKey();
         $keyPrefix = substr($key, 0, 8);
+        $keyHash = hash('sha256', $key);
 
+        // Create API key with plain key encrypted in database
+        // Store encrypted value directly to ensure it's saved
         $apiKey = ApiKey::create([
             'user_id' => $user->id,
             'name' => $name,
-            'key' => hash('sha256', $key),
+            'key' => $keyHash,
             'key_prefix' => $keyPrefix,
+            'plain_key_encrypted' => Crypt::encryptString($key),
         ]);
-
-        // Store the plain key in session temporarily to show to user
-        $userApiKeys = session('user_api_keys', []);
-        $userApiKeys[$apiKey->id] = $key;
-        session(['user_api_keys' => $userApiKeys]);
-        
-        // Also keep flash for backward compatibility
-        session()->flash('api_key_plain', $key);
-        session()->flash('api_key_id', $apiKey->id);
 
         return $apiKey;
     }
