@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -13,15 +14,17 @@ class WACloudNotificationService
 
     public function __construct()
     {
-        $this->apiKey = config('services.wacloud.api_key');
-        $this->baseUrl = config('services.wacloud.base_url', 'https://app.wacloud.id/api/v1');
-        $this->deviceId = config('services.wacloud.device_id');
+        // Get from database settings only (no fallback to .env)
+        $this->apiKey = Setting::getValue('notification_api_key');
+        $this->baseUrl = Setting::getValue('notification_base_url');
+        $this->deviceId = Setting::getValue('notification_device_id');
         
         // Log configuration for debugging
         Log::info('WACloudNotificationService initialized', [
             'api_key_set' => !empty($this->apiKey),
             'device_id_set' => !empty($this->deviceId),
             'base_url' => $this->baseUrl,
+            'source' => 'database',
         ]);
     }
 
@@ -39,17 +42,39 @@ class WACloudNotificationService
             'message_length' => strlen($message),
             'api_key_set' => !empty($this->apiKey),
             'device_id_set' => !empty($this->deviceId),
+            'base_url_set' => !empty($this->baseUrl),
+            'base_url' => $this->baseUrl,
             'device_id' => $this->deviceId,
         ]);
         
-        if (empty($this->apiKey) || empty($this->deviceId)) {
-            Log::warning('WACloud notification skipped: API key or device ID not configured', [
-                'api_key_set' => !empty($this->apiKey),
-                'device_id_set' => !empty($this->deviceId),
+        // Validate required configuration
+        if (empty($this->apiKey)) {
+            Log::warning('WACloud notification skipped: API key not configured', [
+                'api_key_set' => false,
             ]);
             return [
                 'success' => false,
-                'error' => 'WACloud not configured'
+                'error' => 'WACloud API key tidak dikonfigurasi. Silakan isi di halaman Settings.'
+            ];
+        }
+        
+        if (empty($this->deviceId)) {
+            Log::warning('WACloud notification skipped: Device ID not configured', [
+                'device_id_set' => false,
+            ]);
+            return [
+                'success' => false,
+                'error' => 'WACloud Device ID tidak dikonfigurasi. Silakan isi di halaman Settings.'
+            ];
+        }
+        
+        if (empty($this->baseUrl)) {
+            Log::warning('WACloud notification skipped: Base URL not configured', [
+                'base_url_set' => false,
+            ]);
+            return [
+                'success' => false,
+                'error' => 'WACloud Base URL tidak dikonfigurasi. Silakan isi di halaman Settings.'
             ];
         }
 
@@ -68,7 +93,16 @@ class WACloudNotificationService
         }
 
         try {
-            $url = rtrim($this->baseUrl, '/') . '/messages';
+            // Ensure base URL is valid and construct full URL
+            $baseUrl = rtrim($this->baseUrl, '/');
+            if (empty($baseUrl)) {
+                return [
+                    'success' => false,
+                    'error' => 'Base URL tidak valid. Silakan periksa konfigurasi di halaman Settings.'
+                ];
+            }
+            
+            $url = $baseUrl . '/messages';
             
             $payload = [
                 'device_id' => $this->deviceId,
@@ -111,11 +145,20 @@ class WACloudNotificationService
                 'status' => $response->status(),
                 'error' => $errorMessage,
                 'response' => $errorData,
+                'api_key_set' => !empty($this->apiKey),
+                'api_key_length' => $this->apiKey ? strlen($this->apiKey) : 0,
+                'api_key_prefix' => $this->apiKey ? substr($this->apiKey, 0, 8) : 'N/A',
+                'device_id' => $this->deviceId,
+                'base_url' => $this->baseUrl,
+                'url' => $url,
+                'payload' => $payload,
             ]);
 
             return [
                 'success' => false,
                 'error' => $errorMessage,
+                'status_code' => $response->status(),
+                'response_data' => $errorData,
             ];
         } catch (\Exception $e) {
             Log::error('WACloud notification error: ' . $e->getMessage(), [

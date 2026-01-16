@@ -1288,16 +1288,23 @@ class WahaService
     /**
      * Send a document.
      */
-    public function sendDocument(string $sessionId, string $chatId, string $documentPath, ?string $filename = null): array
+    public function sendDocument(string $sessionId, string $chatId, string $documentPath, ?string $filename = null, ?string $caption = null): array
     {
         try {
             $wahaSessionName = $this->getWahaSessionName($sessionId);
+            
+            $formData = [
+                'session' => $wahaSessionName,
+                'chatId' => $chatId,
+            ];
+            
+            if ($caption) {
+                $formData['caption'] = $caption;
+            }
+            
             $response = $this->httpClient()
                 ->attach('file', file_get_contents($documentPath), $filename ?? basename($documentPath))
-                ->post("{$this->baseUrl}/api/sendFile", [
-                    'session' => $wahaSessionName,
-                    'chatId' => $chatId,
-                ]);
+                ->post("{$this->baseUrl}/api/sendFile", $formData);
 
             if ($response->successful()) {
                 return [

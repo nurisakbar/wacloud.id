@@ -298,6 +298,9 @@ class SessionController extends Controller
      */
     public function pair(WhatsAppSession $session)
     {
+        // Increase execution time limit to 2 minutes for QR code generation
+        set_time_limit(120);
+        
         $this->authorize('view', $session);
 
         // If already connected, redirect to show page

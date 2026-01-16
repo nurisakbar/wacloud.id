@@ -15,6 +15,9 @@
                         <a href="{{ route('api-keys.index') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-key mr-2"></i>Api Key
                         </a>
+                        <a href="{{ route('quota.create') }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-shopping-cart mr-2"></i>Beli Quota
+                        </a>
                         <a href="{{ route('sessions.create') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-plus mr-2"></i>Buat Device Baru
                         </a>

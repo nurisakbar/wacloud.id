@@ -245,6 +245,14 @@
                 </a>
             </li>
 
+            <!-- Nav Item - Settings -->
+            <li class="nav-item {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('admin.settings.index') }}">
+                    <i class="fas fa-fw fa-cog"></i>
+                    <span>{{ __('Settings') }}</span>
+                </a>
+            </li>
+
             <!-- Divider -->
             <hr class="sidebar-divider">
 
@@ -283,7 +291,15 @@
             <li class="nav-item {{ request()->routeIs('sessions.*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('sessions.index') }}">
                     <i class="fas fa-fw fa-mobile-alt"></i>
-                    <span>{{ __('Devices') }}</span>
+                    <span>{{ __('Kelola Device') }}</span>
+                </a>
+            </li>
+
+            <!-- Nav Item - Quota -->
+            <li class="nav-item {{ request()->routeIs('quota.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('quota.index') }}">
+                    <i class="fas fa-fw fa-wallet"></i>
+                    <span>{{ __('Pembelian Quota') }}</span>
                 </a>
             </li>
 
@@ -291,7 +307,7 @@
             <li class="nav-item {{ request()->routeIs('messages.*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('messages.index') }}">
                     <i class="fas fa-fw fa-envelope"></i>
-                    <span>{{ __('Messages') }}</span>
+                    <span>{{ __('Kelola Pesan') }}</span>
                 </a>
             </li>
 
@@ -299,7 +315,7 @@
             <li class="nav-item {{ request()->routeIs('templates.*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('templates.index') }}">
                     <i class="fas fa-fw fa-file-alt"></i>
-                    <span>{{ __('Templates') }}</span>
+                    <span>{{ __('Kelola Template') }}</span>
                 </a>
             </li>
 
@@ -348,14 +364,6 @@
                 <a class="nav-link" href="{{ route('profile.show') }}">
                     <i class="fas fa-fw fa-user"></i>
                     <span>{{ __('Profile') }}</span>
-                </a>
-            </li>
-
-            <!-- Nav Item - Quota -->
-            <li class="nav-item {{ request()->routeIs('quota.*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('quota.index') }}">
-                    <i class="fas fa-fw fa-wallet"></i>
-                    <span>{{ __('Purchase Quota') }}</span>
                 </a>
             </li>
 

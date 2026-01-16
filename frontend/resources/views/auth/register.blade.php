@@ -169,8 +169,24 @@
 @push('styles')
 <style>
 body {
-    background-color: #f0f2f5;
+    background-image: url('{{ asset("Gemini_Generated_Image_sa6amqsa6amqsa6a.png") }}');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     font-family: 'Nunito', sans-serif;
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 0;
 }
 
 .login-container {
@@ -179,6 +195,8 @@ body {
     align-items: center;
     justify-content: center;
     padding: 20px;
+    position: relative;
+    z-index: 1;
 }
 
 .login-card {

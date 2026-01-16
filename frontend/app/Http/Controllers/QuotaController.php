@@ -569,8 +569,8 @@ class QuotaController extends Controller
             'user_id' => $user->id,
             'purchase_id' => $purchase->id,
             'user_phone' => $user->phone ?? 'not set',
-            'api_key_set' => !empty(config('services.wacloud.api_key')),
-            'device_id_set' => !empty(config('services.wacloud.device_id')),
+            'api_key_set' => !empty(\App\Models\Setting::getValue('notification_api_key')),
+            'device_id_set' => !empty(\App\Models\Setting::getValue('notification_device_id')),
         ]);
         
         // Check if user has phone number

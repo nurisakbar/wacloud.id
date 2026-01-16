@@ -541,14 +541,16 @@ class SendMessage implements ShouldQueue
                             $session->session_id,
                             $this->chatId,
                             $fullPath,
-                            $fileName
+                            $fileName,
+                            $this->caption
                         );
                     } elseif ($this->documentUrl) {
                         $result = $wahaService->sendDocumentByUrl(
                             $session->session_id,
                             $this->chatId,
                             $this->documentUrl,
-                            $this->filename
+                            $this->filename,
+                            $this->caption
                         );
                     } else {
                         throw new \Exception('No document file or URL provided');

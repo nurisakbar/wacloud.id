@@ -117,6 +117,10 @@ Route::middleware('auth')->group(function () {
         Route::put('/pricing', [App\Http\Controllers\Admin\PricingController::class, 'update'])->name('pricing.update');
         Route::get('/referral-settings', [App\Http\Controllers\Admin\ReferralSettingController::class, 'index'])->name('referral-settings.index');
         Route::put('/referral-settings', [App\Http\Controllers\Admin\ReferralSettingController::class, 'update'])->name('referral-settings.update');
+        Route::get('/settings', [App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
+        Route::put('/settings', [App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
+        Route::get('/settings/quota-stats', [App\Http\Controllers\Admin\SettingController::class, 'getQuotaStats'])->name('settings.quota-stats');
+        Route::post('/settings/test-connection', [App\Http\Controllers\Admin\SettingController::class, 'testConnection'])->name('settings.test-connection');
         Route::get('/quota-purchases', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'index'])->name('quota-purchases.index');
         Route::get('/quota-purchases/{quotaPurchase}', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'show'])->name('quota-purchases.show');
         Route::post('/quota-purchases/{quotaPurchase}/approve', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'approve'])->name('quota-purchases.approve');
