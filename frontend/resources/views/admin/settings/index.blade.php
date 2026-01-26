@@ -123,7 +123,7 @@
                     <ul class="mb-0 pl-3">
                         <li class="mb-2">API Key, Device ID, dan Base URL digunakan untuk mengirim notifikasi sistem seperti password reset via WhatsApp.</li>
                         <li class="mb-2">Pastikan API Key dan Device ID yang dimasukkan valid dan aktif.</li>
-                        <li class="mb-0">Jika tidak diisi, sistem akan menggunakan konfigurasi dari file .env (WACLOUD_API_KEY, WACLOUD_DEVICE_ID, dan WACLOUD_BASE_URL).</li>
+                        <li class="mb-0">Semua konfigurasi dibaca langsung dari database. Pastikan semua field diisi dengan benar.</li>
                     </ul>
                 </div>
             </div>
