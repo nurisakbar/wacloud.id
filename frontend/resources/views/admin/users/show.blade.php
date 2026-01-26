@@ -104,6 +104,146 @@
                 </div>
             </div>
 
+            <!-- Top Up Quota -->
+            <div class="card shadow mb-4 border-left-success">
+                <div class="card-header py-3 bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">
+                        <i class="fas fa-plus-circle"></i> Top Up Quota
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if (session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle"></i> {{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    @if ($errors->any())
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle"></i> 
+                            <ul class="mb-0">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    <form method="POST" action="{{ route('admin.users.top-up-quota', $user) }}" id="top-up-form">
+                        @csrf
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="balance" class="font-weight-bold">
+                                    <i class="fas fa-coins"></i> Balance (Rp)
+                                </label>
+                                <input type="number" 
+                                       class="form-control @error('balance') is-invalid @enderror" 
+                                       id="balance" 
+                                       name="balance" 
+                                       value="{{ old('balance', 0) }}" 
+                                       min="0" 
+                                       step="0.01"
+                                       placeholder="0">
+                                <small class="form-text text-muted">Tambahkan balance untuk user</small>
+                                @error('balance')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="text_quota" class="font-weight-bold">
+                                    <i class="fas fa-comment"></i> Text Quota
+                                </label>
+                                <input type="number" 
+                                       class="form-control @error('text_quota') is-invalid @enderror" 
+                                       id="text_quota" 
+                                       name="text_quota" 
+                                       value="{{ old('text_quota', 0) }}" 
+                                       min="0" 
+                                       placeholder="0">
+                                <small class="form-text text-muted">Tambahkan text quota</small>
+                                @error('text_quota')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="multimedia_quota" class="font-weight-bold">
+                                    <i class="fas fa-image"></i> Multimedia Quota
+                                </label>
+                                <input type="number" 
+                                       class="form-control @error('multimedia_quota') is-invalid @enderror" 
+                                       id="multimedia_quota" 
+                                       name="multimedia_quota" 
+                                       value="{{ old('multimedia_quota', 0) }}" 
+                                       min="0" 
+                                       placeholder="0">
+                                <small class="form-text text-muted">Tambahkan multimedia quota</small>
+                                @error('multimedia_quota')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="free_text_quota" class="font-weight-bold">
+                                    <i class="fas fa-gift"></i> Free Text Quota
+                                </label>
+                                <input type="number" 
+                                       class="form-control @error('free_text_quota') is-invalid @enderror" 
+                                       id="free_text_quota" 
+                                       name="free_text_quota" 
+                                       value="{{ old('free_text_quota', 0) }}" 
+                                       min="0" 
+                                       placeholder="0">
+                                <small class="form-text text-muted">Tambahkan free text quota</small>
+                                @error('free_text_quota')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-12 mb-3">
+                                <label for="notes" class="font-weight-bold">
+                                    <i class="fas fa-sticky-note"></i> Notes (Optional)
+                                </label>
+                                <textarea class="form-control @error('notes') is-invalid @enderror" 
+                                          id="notes" 
+                                          name="notes" 
+                                          rows="2" 
+                                          placeholder="Catatan untuk top up ini (opsional)">{{ old('notes') }}</textarea>
+                                <small class="form-text text-muted">Tambahkan catatan untuk audit trail</small>
+                                @error('notes')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="text-muted small">
+                                <i class="fas fa-info-circle"></i> Pastikan setidaknya satu jenis quota diisi
+                            </div>
+                            <button type="submit" class="btn btn-success" id="submit-btn">
+                                <i class="fas fa-plus-circle"></i> Top Up Quota
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Subscription Information -->
             @if($user->activeSubscription || $user->subscriptionPlan)
             <div class="card shadow mb-4">
@@ -145,6 +285,105 @@
                 </div>
             </div>
             @endif
+
+            <!-- API Key & Device IDs -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-key"></i> API Key & Device IDs
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <!-- API Keys -->
+                    <div class="mb-4">
+                        <h6 class="font-weight-bold mb-3">API Keys</h6>
+                        @if($user->apiKeys->count() > 0)
+                            @foreach($user->apiKeys as $apiKey)
+                                <div class="mb-3 p-3 border rounded">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <div class="font-weight-bold text-muted small mb-1">API Key Name:</div>
+                                            <div>{{ $apiKey->name ?? 'Default' }}</div>
+                                        </div>
+                                        <div>
+                                            @if($apiKey->is_active)
+                                                <span class="badge badge-success">Active</span>
+                                            @else
+                                                <span class="badge badge-secondary">Inactive</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <div class="font-weight-bold text-muted small mb-1">API Key:</div>
+                                        <div class="input-group">
+                                            <input type="text" 
+                                                   class="form-control font-monospace" 
+                                                   id="api-key-{{ $apiKey->id }}" 
+                                                   value="{{ $apiKey->plain_key ?? $apiKey->key_prefix . '...' }}" 
+                                                   readonly>
+                                            <div class="input-group-append">
+                                                <button class="btn btn-outline-secondary" 
+                                                        type="button" 
+                                                        onclick="copyToClipboard('api-key-{{ $apiKey->id }}', this)">
+                                                    <i class="fas fa-copy"></i> Copy
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @if($apiKey->last_used_at)
+                                        <div class="small text-muted">
+                                            Last used: {{ $apiKey->last_used_at->format('d M Y H:i') }}
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @else
+                            <p class="text-muted mb-0">No API keys found</p>
+                        @endif
+                    </div>
+
+                    <!-- Device IDs -->
+                    <div>
+                        <h6 class="font-weight-bold mb-3">Device IDs (Session IDs)</h6>
+                        @if($user->whatsappSessions->count() > 0)
+                            @foreach($user->whatsappSessions as $session)
+                                <div class="mb-2 p-2 border rounded">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="flex-grow-1">
+                                            <div class="font-weight-bold text-muted small mb-1">Device Name:</div>
+                                            <div>{{ $session->session_name }}</div>
+                                        </div>
+                                        <div>
+                                            <span class="badge badge-{{ $session->status === 'connected' ? 'success' : ($session->status === 'pairing' ? 'warning' : 'secondary') }}">
+                                                {{ ucfirst($session->status) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <div class="font-weight-bold text-muted small mb-1">Device ID:</div>
+                                        <div class="input-group">
+                                            <input type="text" 
+                                                   class="form-control font-monospace small" 
+                                                   id="device-id-{{ $session->id }}" 
+                                                   value="{{ $session->session_id }}" 
+                                                   readonly>
+                                            <div class="input-group-append">
+                                                <button class="btn btn-outline-secondary btn-sm" 
+                                                        type="button" 
+                                                        onclick="copyToClipboard('device-id-{{ $session->id }}', this)">
+                                                    <i class="fas fa-copy"></i> Copy
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        @else
+                            <p class="text-muted mb-0">No devices found</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Statistics -->
@@ -218,5 +457,84 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+// Top Up Form Validation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('top-up-form');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const balance = parseFloat(document.getElementById('balance').value) || 0;
+            const textQuota = parseInt(document.getElementById('text_quota').value) || 0;
+            const multimediaQuota = parseInt(document.getElementById('multimedia_quota').value) || 0;
+            const freeTextQuota = parseInt(document.getElementById('free_text_quota').value) || 0;
+            
+            if (balance === 0 && textQuota === 0 && multimediaQuota === 0 && freeTextQuota === 0) {
+                e.preventDefault();
+                alert('Please provide at least one quota type to top up.');
+                return false;
+            }
+            
+            // Confirm before submitting
+            if (!confirm('Are you sure you want to top up quota for this user?')) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Disable submit button to prevent double submission
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        });
+    }
+});
+
+function copyToClipboard(inputId, button) {
+    const input = document.getElementById(inputId);
+    const textToCopy = input.value;
+    
+    // Use modern Clipboard API if available
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            showCopyFeedback(button);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            fallbackCopy(input, button);
+        });
+    } else {
+        // Fallback for older browsers
+        fallbackCopy(input, button);
+    }
+}
+
+function fallbackCopy(input, button) {
+    input.select();
+    input.setSelectionRange(0, 99999); // For mobile devices
+    
+    try {
+        document.execCommand('copy');
+        showCopyFeedback(button);
+    } catch (err) {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard');
+    }
+}
+
+function showCopyFeedback(button) {
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    button.classList.remove('btn-outline-secondary');
+    button.classList.add('btn-success');
+    
+    setTimeout(() => {
+        button.innerHTML = originalHtml;
+        button.classList.remove('btn-success');
+        button.classList.add('btn-outline-secondary');
+    }, 2000);
+}
+</script>
+@endpush
 @endsection
 

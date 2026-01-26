@@ -130,6 +130,7 @@ Route::middleware('auth')->group(function () {
         // Users Management
         Route::get('/users', [App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
         Route::get('/users/{user}', [App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
+        Route::post('/users/{user}/top-up-quota', [App\Http\Controllers\Admin\UserController::class, 'topUpQuota'])->name('users.top-up-quota');
         
         // Log Viewer - only accessible by admin
         Route::get('logs', '\Rap2hpoutre\LaravelLogViewer\LogViewerController@index')->name('logs.index');
