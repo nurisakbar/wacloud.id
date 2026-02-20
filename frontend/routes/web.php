@@ -144,6 +144,12 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+// Klikmedis SSO Integration
+Route::get('/klikmedis/authorize', [App\Http\Controllers\KlikmedisController::class, 'ssoAuthorize'])->name('klikmedis.authorize');
+Route::post('/klikmedis/confirm', [App\Http\Controllers\KlikmedisController::class, 'confirm'])->name('klikmedis.confirm');
+
+
+
 // Webhook receiver (public endpoint - excluded from CSRF protection)
 // These routes are excluded in app/Http/Middleware/VerifyCsrfToken.php
 Route::post('/webhook/receive/{session}', [App\Http\Controllers\WebhookController::class, 'receive'])
