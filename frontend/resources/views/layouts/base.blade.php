@@ -253,6 +253,14 @@
                 </a>
             </li>
 
+            <!-- Nav Item - Vouchers -->
+            <li class="nav-item {{ request()->routeIs('admin.vouchers.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('admin.vouchers.index') }}">
+                    <i class="fas fa-fw fa-ticket-alt"></i>
+                    <span>{{ __('Vouchers') }}</span>
+                </a>
+            </li>
+
             <!-- Divider -->
             <hr class="sidebar-divider">
 
@@ -316,6 +324,14 @@
                 <a class="nav-link" href="{{ route('templates.index') }}">
                     <i class="fas fa-fw fa-file-alt"></i>
                     <span>{{ __('Kelola Template') }}</span>
+                </a>
+            </li>
+
+            <!-- Nav Item - Vouchers -->
+            <li class="nav-item {{ request()->routeIs('vouchers.*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('vouchers.index') }}">
+                    <i class="fas fa-fw fa-ticket-alt"></i>
+                    <span>{{ __('Vouchers') }}</span>
                 </a>
             </li>
 

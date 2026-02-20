@@ -30,7 +30,16 @@ class AccountApiController extends Controller
         // Get statistics
         $totalMessages = $user->messages()->count();
         $totalSessions = $user->whatsappSessions()->count();
-        $connectedSessions = $user->whatsappSessions()->where('status', 'connected')->count();
+        $connectedSessionsQuery = $user->whatsappSessions()->where('status', 'connected');
+        $connectedSessionsCount = (clone $connectedSessionsQuery)->count();
+        
+        // Get active devices list
+        $devices = $connectedSessionsQuery->get()->map(function ($device) {
+            return [
+                'device_id' => $device->session_id,
+                'name' => $device->session_name,
+            ];
+        });
 
         $this->usageService->log($request, 200, $startTime);
 
@@ -60,8 +69,9 @@ class AccountApiController extends Controller
                 'statistics' => [
                     'total_messages' => $totalMessages,
                     'total_sessions' => $totalSessions,
-                    'connected_sessions' => $connectedSessions,
+                    'connected_sessions' => $connectedSessionsCount,
                 ],
+                'devices' => $devices,
             ],
         ]);
     }

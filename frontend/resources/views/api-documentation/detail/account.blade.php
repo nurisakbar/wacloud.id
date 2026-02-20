@@ -191,7 +191,17 @@ func main() {
       "total_messages": 1250,
       "total_sessions": 3,
       "connected_sessions": 2
-    }
+    },
+    "devices": [
+      {
+        "device_id": "device-uuid-1",
+        "name": "Samsung S21"
+      },
+      {
+        "device_id": "device-uuid-2",
+        "name": "iPhone 13"
+      }
+    ]
   }
 }</code></div>
         </div>

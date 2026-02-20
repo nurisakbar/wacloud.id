@@ -85,6 +85,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/api-docs', [App\Http\Controllers\ApiDocumentationController::class, 'index'])->name('api-docs.index');
     Route::get('/api-docs/{module}', [App\Http\Controllers\ApiDocumentationController::class, 'detail'])->name('api-docs.detail');
     
+    // Vouchers
+    Route::get('/vouchers', [App\Http\Controllers\VoucherController::class, 'index'])->name('vouchers.index');
+    Route::post('/vouchers/redeem', [App\Http\Controllers\VoucherController::class, 'redeem'])->name('vouchers.redeem');
+    
     // Profile
     Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
@@ -131,6 +135,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/users', [App\Http\Controllers\Admin\UserController::class, 'index'])->name('users.index');
         Route::get('/users/{user}', [App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
         Route::post('/users/{user}/top-up-quota', [App\Http\Controllers\Admin\UserController::class, 'topUpQuota'])->name('users.top-up-quota');
+        
+        // Vouchers Management
+        Route::resource('vouchers', App\Http\Controllers\Admin\VoucherController::class);
         
         // Log Viewer - only accessible by admin
         Route::get('logs', '\Rap2hpoutre\LaravelLogViewer\LogViewerController@index')->name('logs.index');

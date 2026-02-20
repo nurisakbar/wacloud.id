@@ -195,6 +195,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's voucher redemptions.
+     */
+    public function voucherRedemptions()
+    {
+        return $this->hasMany(VoucherRedemption::class);
+    }
+
+    /**
      * Get or create user quota
      */
     public function getQuota()
