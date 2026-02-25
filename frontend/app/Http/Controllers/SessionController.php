@@ -448,6 +448,42 @@ class SessionController extends Controller
 
         $statusResult = $this->wahaService->getSessionStatus($session->session_id);
 
+        if (!$statusResult['success']) {
+            $error = $statusResult['error'] ?? 'Unknown error';
+            
+            // If session not found in WAHA, try to create it automatically
+            if (stripos($error, 'Session not found') !== false || stripos($error, '404') !== false) {
+                \Log::info('SessionController: Session not found in WAHA, attempting automatic recreation', [
+                    'session_id' => $session->session_id
+                ]);
+                
+                $createResult = $this->wahaService->createSession($session->session_id);
+                
+                if ($createResult['success']) {
+                    // Try to get status again after creation
+                    $statusResult = $this->wahaService->getSessionStatus($session->session_id);
+                } else {
+                    \Log::error('SessionController: Automatic recreation failed', [
+                        'session_id' => $session->session_id,
+                        'error' => $createResult['error'] ?? 'Unknown error'
+                    ]);
+                    
+                    return response()->json([
+                        'status' => $session->status,
+                        'is_connected' => false,
+                        'error' => $createResult['error'] ?? 'Failed to recreate session in WAHA',
+                    ], 500);
+                }
+            } else {
+                return response()->json([
+                    'status' => $session->status,
+                    'is_connected' => false,
+                    'error' => $error,
+                ], 500);
+            }
+        }
+
+        // Now process statusResult (which should be successful if we reached here)
         if ($statusResult['success']) {
             $wahaStatus = $statusResult['status'];
             $newStatus = $wahaStatus === 'WORKING' ? 'connected' : ($wahaStatus === 'SCAN_QR_CODE' ? 'pairing' : 'disconnected');
@@ -456,13 +492,11 @@ class SessionController extends Controller
             $wasConnected = $session->status === 'connected';
             $isNowConnected = $newStatus === 'connected';
 
-            \Log::info('SessionController: Status check', [
+            \Log::info('SessionController: Status check updated', [
                 'session_id' => $session->session_id,
                 'waha_status' => $wahaStatus,
                 'new_status' => $newStatus,
                 'old_status' => $session->status,
-                'was_connected' => $wasConnected,
-                'is_now_connected' => $isNowConnected,
             ]);
 
             $session->update([
@@ -482,11 +516,6 @@ class SessionController extends Controller
             ]);
         }
 
-        return response()->json([
-            'status' => $session->status,
-            'is_connected' => false,
-            'error' => $statusResult['error'] ?? 'Unknown error',
-        ], 500);
     }
 
     /**
