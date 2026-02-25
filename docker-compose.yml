@@ -1,77 +1,71 @@
-version: "3.9"
-
 services:
-  # ============================================================================
-  # WAHA WhatsApp API Service
-  # ============================================================================
+
   waha:
-    image: ${WAHA_IMAGE:-devlikeapro/waha-plus:latest}
+    image: devlikeapro/waha-plus:latest
     container_name: waha-api
     platform: linux/amd64
+
     ports:
-      - "${WAHA_PORT:-3002}:3000"
+      - "3002:3000"
+
     environment:
-      # BASIC
-      - WAHA_LOG_LEVEL=${WAHA_LOG_LEVEL:-info}
-      - WHATSAPP_DEFAULT_ENGINE=${WHATSAPP_DEFAULT_ENGINE:-NOWEB}
-      - WAHA_API_KEY=${WAHA_API_KEY}
-      
-      # DASHBOARD LOGIN
-      - WAHA_DASHBOARD_USERNAME=${WAHA_DASHBOARD_USERNAME:-admin}
-      - WAHA_DASHBOARD_PASSWORD=${WAHA_DASHBOARD_PASSWORD}
-      
-      # SWAGGER
-      - WHATSAPP_SWAGGER_ENABLED=${WAHA_SWAGGER_ENABLED:-true}
-      - WHATSAPP_SWAGGER_USERNAME=${WAHA_SWAGGER_USERNAME:-admin}
-      - WHATSAPP_SWAGGER_PASSWORD=${WAHA_SWAGGER_PASSWORD}
-      
-      # REDIS CONNECTION
-      - REDIS_URL=${REDIS_URL}
-      
-      # AUTO SESSION
-      - WAHA_AUTO_START_SESSIONS=${WAHA_AUTO_START_SESSIONS:-true}
-      - WAHA_RESTART_ALL_SESSIONS=${WAHA_RESTART_ALL_SESSIONS:-true}
-      
-      # TZ
-      - TZ=${TZ:-Asia/Jakarta}
+      WAHA_LOG_LEVEL: info
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+
+      WAHA_API_KEY: bddfb14b40fd43e1a17c709aac4bbd78
+
+      WAHA_DASHBOARD_USERNAME: admin
+      WAHA_DASHBOARD_PASSWORD: ZtozqHAxAV1pgGGCzhxQOYZ0o
+
+      WHATSAPP_SWAGGER_ENABLED: true
+      WHATSAPP_SWAGGER_USERNAME: admin
+      WHATSAPP_SWAGGER_PASSWORD: admin123
+
+      REDIS_URL: redis://:wahaRedisStrongPass@redis:6379
+
+      WAHA_AUTO_START_SESSIONS: true
+      WAHA_RESTART_ALL_SESSIONS: true
+
     volumes:
       - ./docker-data/waha-sessions:/app/.sessions
+
     depends_on:
       redis:
         condition: service_healthy
+
     restart: unless-stopped
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/version"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 40s
+
     networks:
       - waha-network
 
-  # ============================================================================
-  # REDIS (SESSION STORAGE)
-  # ============================================================================
+
   redis:
     image: redis:7-alpine
     container_name: waha-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:-wahaRedisStrongPass} --appendonly yes
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+
+    command: redis-server --requirepass wahaRedisStrongPass --appendonly yes
+
     volumes:
       - redis-data:/data
+
     restart: unless-stopped
+
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-wahaRedisStrongPass}", "ping"]
+      test: ["CMD", "redis-cli","-a","wahaRedisStrongPass","ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+
     networks:
       - waha-network
 
-# ==============================================================================
-# VOLUMES & NETWORKS
-# ==============================================================================
+
 volumes:
   redis-data:
 
