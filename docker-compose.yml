@@ -1,31 +1,55 @@
-version: "3.9"
-
 services:
 
   waha:
     container_name: waha-plus
-    image: devlikeapro/waha-plus:latest
-    restart: always
+    image: ${WAHA_IMAGE}
+    restart: unless-stopped
+
     ports:
-      - "${WAHA_PORT}:${WAHA_PORT}"
+      - "${WAHA_PORT}:3000"
+
     env_file:
       - .env
+
     depends_on:
-      - redis
+      redis:
+        condition: service_started
+
     volumes:
-      - ./sessions:/app/.sessions
+      - ./docker-data/waha-sessions:/app/.sessions
+
     networks:
       - waha-network
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 
   redis:
     container_name: waha-redis
     image: redis:7-alpine
-    restart: always
-    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+
     volumes:
       - redis_data:/data
+
     networks:
       - waha-network
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 
 networks:
