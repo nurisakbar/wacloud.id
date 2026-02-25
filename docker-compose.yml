@@ -1,77 +1,37 @@
+version: "3.9"
+
 services:
 
-  ################################
-  # WAHA API
-  ################################
   waha:
-    image: ${WAHA_IMAGE}
-    container_name: waha-api
-    platform: linux/amd64
-
-    restart: unless-stopped
-
+    container_name: waha-plus
+    image: devlikeapro/waha-plus:latest
+    restart: always
     ports:
-      - "${WAHA_PORT}:3000"
-
-    environment:
-      WAHA_API_KEY: ${WAHA_API_KEY}
-
-      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME}
-      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
-
-      WHATSAPP_SWAGGER_USERNAME: ${WHATSAPP_SWAGGER_USERNAME}
-      WHATSAPP_SWAGGER_PASSWORD: ${WHATSAPP_SWAGGER_PASSWORD}
-
-      WHATSAPP_DEFAULT_ENGINE: ${WHATSAPP_DEFAULT_ENGINE}
-      WAHA_LOG_LEVEL: ${WAHA_LOG_LEVEL}
-
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-
-    volumes:
-      - ./docker-data/waha-sessions:/app/.sessions
-
+      - "${WAHA_PORT}:${WAHA_PORT}"
+    env_file:
+      - .env
     depends_on:
-      redis:
-        condition: service_healthy
-
-    networks:
-      - waha-network
-
-    healthcheck:
-      test: ["CMD","curl","-f","http://localhost:3000/api/version"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-
-
-  ################################
-  # REDIS
-  ################################
-  redis:
-    image: redis:7-alpine
-    container_name: waha-redis
-
-    restart: unless-stopped
-
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
-
+      - redis
     volumes:
-      - ./docker-data/redis:/data
-
+      - ./sessions:/app/.sessions
     networks:
       - waha-network
 
-    healthcheck:
-      test: ["CMD","redis-cli","-a","${REDIS_PASSWORD}","ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  redis:
+    container_name: waha-redis
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - waha-network
 
 
-################################
-# NETWORK
-################################
 networks:
   waha-network:
     driver: bridge
+
+
+volumes:
+  redis_data:
