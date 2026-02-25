@@ -1,30 +1,31 @@
 services:
 
+  ################################
+  # WAHA API
+  ################################
   waha:
-    image: devlikeapro/waha-plus:latest
+    image: ${WAHA_IMAGE}
     container_name: waha-api
     platform: linux/amd64
 
+    restart: unless-stopped
+
     ports:
-      - "3002:3000"
+      - "${WAHA_PORT}:3000"
 
     environment:
-      WAHA_LOG_LEVEL: info
-      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WAHA_API_KEY: ${WAHA_API_KEY}
 
-      WAHA_API_KEY: bddfb14b40fd43e1a17c709aac4bbd78
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
 
-      WAHA_DASHBOARD_USERNAME: admin
-      WAHA_DASHBOARD_PASSWORD: ZtozqHAxAV1pgGGCzhxQOYZ0o
+      WHATSAPP_SWAGGER_USERNAME: ${WHATSAPP_SWAGGER_USERNAME}
+      WHATSAPP_SWAGGER_PASSWORD: ${WHATSAPP_SWAGGER_PASSWORD}
 
-      WHATSAPP_SWAGGER_ENABLED: true
-      WHATSAPP_SWAGGER_USERNAME: admin
-      WHATSAPP_SWAGGER_PASSWORD: admin123
+      WHATSAPP_DEFAULT_ENGINE: ${WHATSAPP_DEFAULT_ENGINE}
+      WAHA_LOG_LEVEL: ${WAHA_LOG_LEVEL}
 
-      REDIS_URL: redis://:wahaRedisStrongPass@redis:6379
-
-      WAHA_AUTO_START_SESSIONS: true
-      WAHA_RESTART_ALL_SESSIONS: true
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
 
     volumes:
       - ./docker-data/waha-sessions:/app/.sessions
@@ -33,42 +34,44 @@ services:
       redis:
         condition: service_healthy
 
-    restart: unless-stopped
-
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/version"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
     networks:
       - waha-network
 
+    healthcheck:
+      test: ["CMD","curl","-f","http://localhost:3000/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
+
+  ################################
+  # REDIS
+  ################################
   redis:
     image: redis:7-alpine
     container_name: waha-redis
 
-    command: redis-server --requirepass wahaRedisStrongPass --appendonly yes
-
-    volumes:
-      - redis-data:/data
-
     restart: unless-stopped
 
-    healthcheck:
-      test: ["CMD", "redis-cli","-a","wahaRedisStrongPass","ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+
+    volumes:
+      - ./docker-data/redis:/data
 
     networks:
       - waha-network
 
+    healthcheck:
+      test: ["CMD","redis-cli","-a","${REDIS_PASSWORD}","ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-volumes:
-  redis-data:
 
+################################
+# NETWORK
+################################
 networks:
   waha-network:
     driver: bridge
