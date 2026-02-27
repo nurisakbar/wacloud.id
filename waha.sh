@@ -526,10 +526,15 @@ cmd_pull() {
     
     check_docker
     
+    # Load .env file if available
+    if [ -f "$ENV_FILE" ]; then
+        export $(grep -v '^#' "$ENV_FILE" | xargs)
+    fi
+    
     # Docker Hub credentials for WAHA Plus
-    DOCKER_USERNAME="devlikeapro"
-    DOCKER_PASSWORD="dckr_pat_RWx6IjPvhnwkEOpmqGJOPeMT9AQ"
-    WAHA_IMAGE="devlikeapro/waha-plus:latest"
+    DOCKER_USERNAME="${WAHA_DOCKER_USERNAME:-devlikeapro}"
+    DOCKER_PASSWORD="${WAHA_DOCKER_PASSWORD}"
+    WAHA_IMAGE="${WAHA_IMAGE:-devlikeapro/waha-plus:latest}"
     
     print_info "Logging in to Docker Hub..."
     echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
