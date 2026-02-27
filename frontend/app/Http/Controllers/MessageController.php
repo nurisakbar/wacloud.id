@@ -632,7 +632,14 @@ class MessageController extends Controller
                     <i class="fas fa-eye"></i>
                 </a>';
             })
-            ->rawColumns(['content_preview', 'status_badge', 'formatted_date', 'actions'])
+            ->addColumn('contact_info', function ($message) {
+                if ($message->isIncoming()) {
+                    return '<div class="fw-bold">' . ($message->from_number ?? 'Unknown') . '</div><small class="text-muted"><i class="fas fa-arrow-down text-primary"></i> Pengirim</small>';
+                } else {
+                    return '<div class="fw-bold">' . ($message->to_number ?? 'Unknown') . '</div><small class="text-muted"><i class="fas fa-arrow-up text-success"></i> Tujuan</small>';
+                }
+            })
+            ->rawColumns(['content_preview', 'status_badge', 'formatted_date', 'contact_info', 'actions'])
             ->make(true);
         } catch (\Exception $e) {
             \Log::error('DataTables error: ' . $e->getMessage(), [
@@ -745,13 +752,19 @@ class MessageController extends Controller
         
         // Try to get phone number from device_info or session data
         $fromNumber = null;
-        if ($session->device_info && isset($session->device_info['phone'])) {
-            $fromNumber = $session->device_info['phone'];
-        } elseif ($session->device_info && isset($session->device_info['wid'])) {
-            // Extract phone from wid (format: 6281234567890@c.us)
-            $wid = $session->device_info['wid'];
-            if (is_string($wid) && strpos($wid, '@') !== false) {
-                $fromNumber = explode('@', $wid)[0];
+        if ($session->phone_number) {
+            $fromNumber = str_replace(['+', ' '], '', $session->phone_number);
+        }
+        
+        if (!$fromNumber) {
+            if ($session->device_info && isset($session->device_info['phone'])) {
+                $fromNumber = $session->device_info['phone'];
+            } elseif ($session->device_info && isset($session->device_info['wid'])) {
+                // Extract phone from wid (format: 6281234567890@c.us)
+                $wid = $session->device_info['wid'];
+                if (is_string($wid) && strpos($wid, '@') !== false) {
+                    $fromNumber = explode('@', $wid)[0];
+                }
             }
         }
         
@@ -817,6 +830,8 @@ class MessageController extends Controller
                 $mediaPath,
                 $documentPath,
                 $documentUrl,
+                null, // imageUrl
+                null, // videoUrl
                 $request->caption,
                 $chatType
             );
@@ -924,14 +939,20 @@ class MessageController extends Controller
                 'errors' => []
             ];
 
-            // Try to get phone number from device_info
+            // Try to get phone number from device_info or session
             $fromNumber = null;
-            if ($session->device_info && isset($session->device_info['phone'])) {
-                $fromNumber = $session->device_info['phone'];
-            } elseif ($session->device_info && isset($session->device_info['wid'])) {
-                $wid = $session->device_info['wid'];
-                if (is_string($wid) && strpos($wid, '@') !== false) {
-                    $fromNumber = explode('@', $wid)[0];
+            if ($session->phone_number) {
+                $fromNumber = str_replace(['+', ' '], '', $session->phone_number);
+            }
+            
+            if (!$fromNumber) {
+                if ($session->device_info && isset($session->device_info['phone'])) {
+                    $fromNumber = $session->device_info['phone'];
+                } elseif ($session->device_info && isset($session->device_info['wid'])) {
+                    $wid = $session->device_info['wid'];
+                    if (is_string($wid) && strpos($wid, '@') !== false) {
+                        $fromNumber = explode('@', $wid)[0];
+                    }
                 }
             }
 

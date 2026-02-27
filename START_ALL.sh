@@ -31,10 +31,10 @@ fi
 
 sleep 5
 
-if docker ps | grep -q waha-api; then
-    echo -e "${GREEN}✅ WAHA API is running${NC}"
+if docker ps | grep -q waha-plus; then
+    echo -e "${GREEN}✅ WAHA Plus is running${NC}"
 else
-    echo -e "${RED}⚠️  WAHA API may still be starting...${NC}"
+    echo -e "${RED}⚠️  WAHA Plus may still be starting...${NC}"
 fi
 
 # 2. Check Laravel

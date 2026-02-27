@@ -261,8 +261,7 @@
                 </a>
             </li>
 
-            <!-- Divider -->
-            <hr class="sidebar-divider">
+
 
             <!-- Heading -->
             <div class="sidebar-heading">
@@ -374,6 +373,14 @@
             <div class="sidebar-heading">
                 {{ __('Account') }}
             </div>
+
+            <!-- Nav Item - Log Viewer -->
+            <li class="nav-item {{ request()->routeIs('logs.*') || request()->is('logs*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('logs.index') }}">
+                    <i class="fas fa-fw fa-scroll"></i>
+                    <span>{{ __('System Logs') }}</span>
+                </a>
+            </li>
 
             <!-- Nav Item - Profile -->
             <li class="nav-item {{ request()->routeIs('profile.*') ? 'active' : '' }}">

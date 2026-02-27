@@ -38,9 +38,6 @@ class WahaService
      */
     protected function getWahaSessionName(string $sessionId): string
     {
-        if (config('app.env') === 'local') {
-            return 'default';
-        }
         return $sessionId;
     }
 
@@ -118,10 +115,7 @@ class WahaService
                 }
                 
                 // Determine WAHA session name based on environment
-                // In local environment, use 'default' for WAHA Core compatibility
-                // In production, use the actual session_id for WAHA Plus multi-session support
-                $isLocal = config('app.env') === 'local';
-                $wahaSessionName = $isLocal ? 'default' : $sessionId;
+                $wahaSessionName = $this->getWahaSessionName($sessionId);
                 $originalSessionId = $sessionId; // Keep original for webhook routing
                 
                 Log::info('WAHA: Creating session', [
@@ -226,6 +220,12 @@ class WahaService
                             ],
                         ],
                     ],
+                    'noweb' => [
+                        'store' => [
+                            'enabled' => true,
+                            'full_sync' => true
+                        ]
+                    ]
                 ];
                 
                 Log::info('WAHA: Built-in webhook configured successfully', [
@@ -396,10 +396,7 @@ class WahaService
     public function getQrCode(string $sessionId): array
     {
         try {
-            // In local env, WAHA always uses 'default' session name.
-            // Using the UUID directly returns 404/422, so we must resolve the correct name first.
-            $isLocal = config('app.env') === 'local';
-            $wahaSessionName = $isLocal ? 'default' : $sessionId;
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
 
             Log::info('WAHA: Getting QR code', [
                 'original_session_id' => $sessionId,
@@ -620,9 +617,7 @@ class WahaService
     public function getSessionStatus(string $sessionId): array
     {
         try {
-            // In local environment, use 'default' session name for WAHA Core compatibility
-            $isLocal = config('app.env') === 'local';
-            $wahaSessionName = $isLocal ? 'default' : $sessionId;
+            $wahaSessionName = $this->getWahaSessionName($sessionId);
             $originalSessionId = $sessionId;
             
             $response = $this->httpClient()

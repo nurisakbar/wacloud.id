@@ -146,7 +146,7 @@ class TestWebhook extends Command
         if ($this->option('from-docker')) {
             $this->info("Test 2: Testing webhook from Docker container...");
             $this->warn("  This requires docker exec access. Skipping for now.");
-            $this->warn("  Use: docker exec waha-api curl -X POST '{$webhookUrl}' -H 'Content-Type: application/json' -d '{\"event\":\"test\",\"payload\":{}}'");
+            $this->warn("  Use: docker exec waha-plus curl -X POST '{$webhookUrl}' -H 'Content-Type: application/json' -d '{\"event\":\"test\",\"payload\":{}}'");
             $this->newLine();
         }
 

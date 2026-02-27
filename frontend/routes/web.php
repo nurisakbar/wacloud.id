@@ -141,8 +141,11 @@ Route::middleware('auth')->group(function () {
         Route::resource('vouchers', App\Http\Controllers\Admin\VoucherController::class);
         
         // Log Viewer - only accessible by admin
-        Route::get('logs', '\Rap2hpoutre\LaravelLogViewer\LogViewerController@index')->name('logs.index');
+        // Log Viewer moved outside admin group
     });
+
+    // Log Viewer - globally accessible to authenticated users
+    Route::get('logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index'])->name('logs.index');
 });
 
 // Klikmedis SSO Integration

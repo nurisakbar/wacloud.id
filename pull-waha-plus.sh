@@ -53,7 +53,7 @@ check_docker
 
 # Docker Hub credentials for WAHA Plus
 DOCKER_USERNAME="devlikeapro"
-DOCKER_PASSWORD="dckr_pat_RWx6IjPvhnwkEOpmgGJOPeMT9AQ"
+DOCKER_PASSWORD="dckr_pat_RWx6IjPvhnwkEOpmqGJOPeMT9AQ"
 WAHA_IMAGE="devlikeapro/waha-plus:latest"
 
 print_info "Step 1/3: Logging in to Docker Hub..."
@@ -69,7 +69,7 @@ echo ""
 
 print_info "Step 2/3: Pulling WAHA Plus image..."
 print_info "Image: $WAHA_IMAGE"
-docker pull "$WAHA_IMAGE"
+docker pull --platform linux/amd64 "$WAHA_IMAGE"
 
 if [ $? -ne 0 ]; then
     print_error "Failed to pull WAHA Plus image!"

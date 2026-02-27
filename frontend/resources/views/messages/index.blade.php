@@ -91,7 +91,8 @@
                             <thead>
                                 <tr>
                                     <th width="15%">{{ __('Waktu') }}</th>
-                                    <th width="60%">{{ __('Pesan') }}</th>
+                                    <th width="20%">{{ __('Kontak') }}</th>
+                                    <th width="40%">{{ __('Pesan') }}</th>
                                     <th width="15%">{{ __('Status') }}</th>
                                     <th width="10%" class="text-center">{{ __('Actions') }}</th>
                                 </tr>
@@ -208,6 +209,7 @@ $(document).ready(function() {
         },
         columns: [
             { data: 'formatted_date', name: 'created_at', orderable: true },
+            { data: 'contact_info', name: 'contact_info', orderable: false, searchable: false },
             { data: 'content_preview', name: 'content', orderable: false, searchable: true },
             { data: 'status_badge', name: 'status', orderable: false, searchable: false },
             { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-center' }

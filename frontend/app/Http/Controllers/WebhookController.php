@@ -477,44 +477,45 @@ class WebhookController extends Controller
             
             $sessionPhoneNumber = $getSessionPhoneNumber();
             
+            // Extract phone numbers from payload
+            $pFrom = $this->extractPhoneNumber($from);
+            $pTo = $this->extractPhoneNumber($to);
+            
             if ($isFromMe) {
-                // Outgoing message: from_number should be session's phone number
-                if (!$fromNumber && $sessionPhoneNumber) {
-                    $fromNumber = $sessionPhoneNumber;
-                }
+                // Outgoing message: we are the sender
+                $fromNumber = $sessionPhoneNumber;
                 
-                // Validate: For outgoing messages, from_number must match session's phone number
-                if ($sessionPhoneNumber && $fromNumber && $fromNumber !== $sessionPhoneNumber) {
-                    Log::warning('Webhook: Message rejected - from_number does not match session', [
-                        'session_id' => $session->session_id,
-                        'session_phone' => $sessionPhoneNumber,
-                        'message_from' => $fromNumber,
-                        'whatsapp_message_id' => $whatsappMessageId,
-                    ]);
-                    return; // Reject message - not for this session
+                // Determine recipient (the 'other' side)
+                // In some WAHA engines (NOWEB), the recipient might be in 'from' field
+                if ($pFrom && $pFrom !== $sessionPhoneNumber) {
+                    $toNumber = $pFrom;
+                } elseif ($pTo && $pTo !== $sessionPhoneNumber) {
+                    $toNumber = $pTo;
+                } else {
+                    $toNumber = $pTo ?: $pFrom;
                 }
             } else {
-                // Incoming message: to_number should be session's phone number
-                if (!$toNumber && $sessionPhoneNumber) {
-                    $toNumber = $sessionPhoneNumber;
-                }
-                // Also try to extract from _data if available (might contain recipient info)
-                if (!$toNumber && !empty($payload['_data']['key']['remoteJidAlt'])) {
-                    $toNumber = $this->extractPhoneNumber($payload['_data']['key']['remoteJidAlt']);
+                // Incoming message: we are the recipient
+                $toNumber = $sessionPhoneNumber;
+                
+                // Determine sender (the 'other' side)
+                if ($pFrom && $pFrom !== $sessionPhoneNumber) {
+                    $fromNumber = $pFrom;
+                } elseif ($pTo && $pTo !== $sessionPhoneNumber) {
+                    $fromNumber = $pTo;
+                } else {
+                    $fromNumber = $pFrom ?: $pTo;
                 }
                 
-                // Validate: For incoming messages, to_number must match session's phone number
-                if ($sessionPhoneNumber && $toNumber && $toNumber !== $sessionPhoneNumber) {
-                    Log::warning('Webhook: Message rejected - to_number does not match session', [
-                        'session_id' => $session->session_id,
-                        'session_phone' => $sessionPhoneNumber,
-                        'message_to' => $toNumber,
-                        'whatsapp_message_id' => $whatsappMessageId,
-                        'from_number' => $fromNumber,
-                    ]);
-                    return; // Reject message - not for this session
+                // Also check for participant (group sender)
+                if (!empty($participant)) {
+                    $fromNumber = $this->extractPhoneNumber($participant);
                 }
             }
+            
+            // Final fallbacks
+            if (!$fromNumber && $isFromMe) $fromNumber = $sessionPhoneNumber;
+            if (!$toNumber && !$isFromMe) $toNumber = $sessionPhoneNumber;
 
             // Determine message type
             $messageType = $this->determineMessageType($payload);
@@ -678,6 +679,8 @@ class WebhookController extends Controller
             return null;
         }
 
+        $messageId = null;
+
         // Handle ID as object/array (WAHA format: {"fromMe":false,"remote":"...","id":"..."})
         if (is_array($idData)) {
             $messageId = $idData['id'] ?? $idData['_serialized'] ?? null;
@@ -685,15 +688,24 @@ class WebhookController extends Controller
             if (!$messageId && isset($idData['remote']) && isset($idData['id'])) {
                 $messageId = $idData['id'];
             }
-            // Fallback: use remote + id combination
-            if (!$messageId && isset($idData['remote'])) {
-                $messageId = ($idData['remote'] ?? '') . '_' . ($idData['id'] ?? uniqid());
-            }
         } else {
-            $messageId = $idData;
+            $messageId = (string) $idData;
         }
 
-        return $messageId ? (string) $messageId : null;
+        if (!$messageId) {
+            return null;
+        }
+
+        // Handle serialized ID format (e.g. true_628123456789@c.us_3EB0BF...)
+        // We want the part after the last underscore if there are multiple underscores
+        if (strpos($messageId, '_') !== false) {
+            $parts = explode('_', $messageId);
+            if (count($parts) >= 3) {
+                $messageId = end($parts);
+            }
+        }
+
+        return $messageId;
     }
 
     /**

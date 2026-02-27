@@ -121,16 +121,20 @@ fi
 echo ""
 
 # Test 2: Test from Docker container (if WAHA is in Docker)
-if docker ps | grep -q waha-api; then
+if docker ps | grep -q waha-plus; then
     echo "Test 2: Testing webhook from Docker container..."
-    log_debug "Test 2: Testing from Docker container" "{\"test\":2,\"docker_container\":\"waha-api\"}"
+    log_debug "Test 2: Testing from Docker container" "{\"test\":2,\"docker_container\":\"waha-plus\"}"
+    
+    # Try using host.docker.internal first (works on Mac/Windows)
+    log_info "Attempting from Docker container via host.docker.internal..."
     
     # Try host.docker.internal
     DOCKER_WEBHOOK_URL="http://host.docker.internal:8000/webhook/receive/${SESSION_ID}"
     echo "  Testing: ${DOCKER_WEBHOOK_URL}"
     log_debug "Test 2: Docker webhook URL" "{\"test\":2,\"docker_webhook_url\":\"${DOCKER_WEBHOOK_URL}\"}"
+    log_debug "Executing curl inside waha-plus" "POST http://host.docker.internal:8000/webhook/receive/${SESSION_ID}"
     
-    HTTP_CODE=$(docker exec waha-api curl -s -o /dev/null -w "%{http_code}" -X POST "${DOCKER_WEBHOOK_URL}" \
+    HTTP_CODE=$(docker exec waha-plus curl -s -o /dev/null -w "%{http_code}" -X POST "${DOCKER_WEBHOOK_URL}" \
       -H "Content-Type: application/json" \
       -d '{"event":"test","payload":{}}' 2>/dev/null || echo "000")
     

@@ -22,7 +22,11 @@ class SessionDebugController extends Controller
      */
     public function debug(Request $request)
     {
-        $sessionId = $request->get('session_id', 'default');
+        $sessionId = $request->get('session_id');
+        
+        if (!$sessionId) {
+            return response()->json(['error' => 'session_id is required'], 400);
+        }
         
         $debug = [
             'session_id' => $sessionId,
@@ -60,7 +64,7 @@ class SessionDebugController extends Controller
         ];
 
         // Check WAHA logs (last 20 lines)
-        $wahaLogs = shell_exec("docker logs waha-api 2>&1 | tail -20");
+        $wahaLogs = shell_exec("docker logs waha-plus 2>&1 | tail -20");
         $debug['waha_logs'] = explode("\n", trim($wahaLogs));
 
         return response()->json($debug, 200, [], JSON_PRETTY_PRINT);
@@ -71,7 +75,11 @@ class SessionDebugController extends Controller
      */
     public function restart(Request $request)
     {
-        $sessionId = $request->get('session_id', 'default');
+        $sessionId = $request->get('session_id');
+        
+        if (!$sessionId) {
+            return response()->json(['error' => 'session_id is required'], 400);
+        }
         
         Log::info('SessionDebug: Restarting session', ['session_id' => $sessionId]);
         
