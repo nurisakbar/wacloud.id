@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\DebugLog;
 use App\Helpers\PhoneNumberHelper;
 use App\Jobs\SendMessage as SendMessageJob;
 use App\Models\Message;
@@ -397,20 +398,23 @@ class MessageController extends Controller
                             }
                         }
                         
-                        // If message not found but it's older than 30 seconds, assume it was sent
-                        // (might have been deleted from WAHA history or not in recent messages)
-                        if (!$found && $message->created_at < now()->subSeconds(30)) {
+                        // Jika pesan tidak ditemukan dan usia sudah lebih dari 45 detik,
+                        // kemungkinan gagal (WAHA menghapus dari antrean atau error engine).
+                        if (!$found && $message->created_at < now()->subSeconds(45)) {
                             $message->update([
-                                'status' => 'sent',
+                                'status' => 'failed',
+                                'error_message' => 'Pesan tidak ditemukan di histori WAHA setelah 45 detik.',
                                 'updated_at' => now(),
                             ]);
                             $updated++;
                         }
                     } else {
-                        // If we can't get messages but message is old enough, assume sent
-                        if ($message->created_at < now()->subSeconds(30)) {
+                        // Jika tidak bisa fetch getMessages dan pesan sudah terlalu lama, biarkan saja
+                        // atau mark as failed agar user tahu ada masalah koneksi ke WAHA.
+                        if ($message->created_at < now()->subSeconds(60)) {
                             $message->update([
-                                'status' => 'sent',
+                                'status' => 'failed',
+                                'error_message' => 'Gagal memeriksa status ke WAHA (API error).',
                                 'updated_at' => now(),
                             ]);
                             $updated++;
@@ -817,6 +821,17 @@ class MessageController extends Controller
                 $chatType
             );
 
+            DebugLog::log('[MessageController] store(): Sending message', [
+                'message_id'   => $message->id,
+                'session_id'   => $session->session_id,
+                'chat_id'      => $chatId,
+                'chat_type'    => $chatType,
+                'message_type' => $request->message_type,
+                'to_number'    => $request->to_number,
+                'content'      => $request->message_type === 'text' ? $request->content : '[media]',
+                'user_id'      => Auth::id(),
+            ]);
+
             \Log::info('Browser: Message job dispatched', [
                 'message_id' => $message->id,
                 'session_id' => $session->session_id,
@@ -860,6 +875,14 @@ class MessageController extends Controller
 
         $delayEnabled = $request->has('delay_enabled') && $request->delay_enabled;
         $delaySeconds = $delayEnabled ? (int)($request->delay_seconds ?? 2) : 0;
+
+        DebugLog::log('[MessageController] storeBulk(): Bulk message request', [
+            'session_id'    => $session->session_id,
+            'user_id'       => Auth::id(),
+            'delay_enabled' => $delayEnabled ?? false,
+            'delay_seconds' => $delaySeconds ?? 0,
+            'file_name'     => $request->file('excel_file')?->getClientOriginalName(),
+        ]);
 
         try {
             $file = $request->file('excel_file');

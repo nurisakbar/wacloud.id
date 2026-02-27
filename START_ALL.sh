@@ -40,7 +40,7 @@ fi
 # 2. Check Laravel
 echo ""
 echo -e "${YELLOW}🔧 Checking Laravel setup...${NC}"
-cd app
+cd frontend
 
 # Check if .env exists
 if [ ! -f .env ]; then

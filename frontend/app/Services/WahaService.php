@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\DebugLog;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use GuzzleHttp\Client as GuzzleClient;
@@ -50,37 +51,49 @@ class WahaService
     {
         $timeout = $timeout ?? $this->timeout;
         $client = Http::timeout($timeout);
-        
+
         // WAHA requires API key authentication
-        // Try to get from config, or use default from logs
+        // Try to get from config, or fallback to env directly
         $apiKey = $this->apiKey ?? env('WAHA_API_KEY');
-        
+
+        // ── DEBUG LOG ──────────────────────────────────────────────────────
+        $maskedKey = $apiKey
+            ? (strlen($apiKey) > 8
+                ? substr($apiKey, 0, 4) . '...' . substr($apiKey, -4)
+                : '***')
+            : 'NULL';
+
+        DebugLog::log('WAHA httpClient(): Auth config check', [
+            'base_url'          => $this->baseUrl,
+            'config_api_key'    => $this->apiKey
+                ? substr($this->apiKey, 0, 4) . '...' . substr($this->apiKey, -4)
+                : 'null (not set in config)',
+            'env_api_key'       => env('WAHA_API_KEY')
+                ? substr(env('WAHA_API_KEY'), 0, 4) . '...' . substr(env('WAHA_API_KEY'), -4)
+                : 'null (not set in .env)',
+            'resolved_api_key'  => $maskedKey,
+            'has_api_key'       => !empty($apiKey),
+            'timeout'           => $timeout,
+        ]);
+        // ──────────────────────────────────────────────────────────────────
+
         if ($apiKey) {
-            // Mask API key for logging (show first 4 and last 4 chars)
-            $maskedKey = strlen($apiKey) > 8 
-                ? substr($apiKey, 0, 4) . '...' . substr($apiKey, -4) 
-                : '***';
-            
-            Log::debug('WAHA: Using API key for authentication', [
-                'api_key_masked' => $maskedKey,
-                'api_key_length' => strlen($apiKey),
-                'base_url' => $this->baseUrl,
-            ]);
-            
-            $client->withHeaders([
+            $client = $client->withHeaders([
                 'X-Api-Key' => $apiKey,
             ]);
+
+            DebugLog::log('WAHA httpClient(): X-Api-Key header attached', [
+                'api_key_masked' => $maskedKey,
+                'base_url'       => $this->baseUrl,
+            ]);
         } else {
-            // If no API key configured, try to get from WAHA logs (for development)
-            // In production, always set WAHA_API_KEY in .env
-            Log::error('WAHA API key not configured. Requests will fail with 401 Unauthorized.', [
-                'base_url' => $this->baseUrl,
-                'config_api_key' => $this->apiKey ? 'set (from config)' : 'null',
-                'env_api_key' => env('WAHA_API_KEY') ? 'set (from env)' : 'null',
-                'solution' => 'Set WAHA_API_KEY in .env file to match the API key in docker .env file',
+            Log::error('WAHA httpClient(): API key NOT configured — requests will return 401 Unauthorized', [
+                'base_url'   => $this->baseUrl,
+                'fix'        => 'Set WAHA_API_KEY in frontend/.env to match WAHA_API_KEY in docker .env',
+                'docker_env' => base_path('../.env'),
             ]);
         }
-        
+
         return $client;
     }
 
@@ -121,14 +134,12 @@ class WahaService
                     'attempt' => $retryCount + 1,
                 ]);
                 
-                // Build payload with optional engine configuration
+                // Build payload — engine is NOT sent here.
+                // Docker handles the engine via WHATSAPP_DEFAULT_ENGINE=NOWEB in docker-compose .env.
+                // Sending an engine in the payload overrides the Docker setting and can cause conflicts.
                 $payload = [
                     'name' => $wahaSessionName,
                 ];
-                
-                // Add engine configuration if specified (GOWS supports more features like polls)
-                // Engine can also be set via WHATSAPP_DEFAULT_ENGINE environment variable in docker-compose
-                $engine = env('WAHA_DEFAULT_ENGINE', 'GOWS');
                 
                 // ============================================
                 // BUILT-IN WEBHOOK CONFIGURATION
@@ -199,8 +210,8 @@ class WahaService
                 // Configure built-in webhooks according to WAHA documentation
                 // https://waha.devlike.pro/docs/how-to/receive-messages/
                 // https://waha.devlike.pro/docs/how-to/events/
+                // NOTE: 'engine' key is intentionally omitted — let WHATSAPP_DEFAULT_ENGINE in Docker decide.
                 $payload['config'] = [
-                    'engine' => $engine,
                     'webhooks' => [
                         [
                             'url' => $webhookUrl,
@@ -385,13 +396,22 @@ class WahaService
     public function getQrCode(string $sessionId): array
     {
         try {
-            Log::info('WAHA: Getting QR code', ['session_id' => $sessionId]);
-            
-            // Try different possible endpoints (WAHA API endpoints)
+            // In local env, WAHA always uses 'default' session name.
+            // Using the UUID directly returns 404/422, so we must resolve the correct name first.
+            $isLocal = config('app.env') === 'local';
+            $wahaSessionName = $isLocal ? 'default' : $sessionId;
+
+            Log::info('WAHA: Getting QR code', [
+                'original_session_id' => $sessionId,
+                'waha_session_name'   => $wahaSessionName,
+                'environment'         => config('app.env'),
+            ]);
+
+            // Build endpoints using the resolved WAHA session name
             $endpoints = [
-                "{$this->baseUrl}/api/{$sessionId}/auth/qr",  // Most common format
-                "{$this->baseUrl}/api/sessions/{$sessionId}/auth/qr",
-                "{$this->baseUrl}/api/sessions/{$sessionId}/qr",
+                "{$this->baseUrl}/api/{$wahaSessionName}/auth/qr",
+                "{$this->baseUrl}/api/sessions/{$wahaSessionName}/auth/qr",
+                "{$this->baseUrl}/api/sessions/{$wahaSessionName}/qr",
             ];
 
             $lastError = null;
@@ -399,11 +419,11 @@ class WahaService
             
             foreach ($endpoints as $endpoint) {
                 try {
-                    Log::debug('WAHA: Trying QR endpoint', ['endpoint' => $endpoint]);
+                    DebugLog::log('WAHA: Trying QR endpoint', ['endpoint' => $endpoint]);
                     
                     $response = $this->httpClient()->get($endpoint);
                     
-                    Log::debug('WAHA: QR endpoint response', [
+                    DebugLog::log('WAHA: QR endpoint response', [
                         'endpoint' => $endpoint,
                         'status' => $response->status(),
                         'content_type' => $response->header('Content-Type'),
@@ -508,7 +528,7 @@ class WahaService
                 
                 foreach ($defaultEndpoints as $endpoint) {
                     try {
-                        Log::debug('WAHA: Trying QR endpoint with default session', ['endpoint' => $endpoint]);
+                        DebugLog::log('WAHA: Trying QR endpoint with default session', ['endpoint' => $endpoint]);
                         
                         $response = $this->httpClient()->get($endpoint);
                         
@@ -803,7 +823,7 @@ class WahaService
             
             Log::info('WAHA: Sending text message', [
                 'url' => $url,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
                 'chatId' => $chatId,
                 'text_length' => strlen($text),
             ]);
@@ -1199,7 +1219,7 @@ class WahaService
             
             Log::info('WAHA: Sending video by URL', [
                 'url' => $url,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
                 'chatId' => $chatId,
                 'video_url' => $videoUrl,
                 'mimetype' => $mimetype,
@@ -1524,7 +1544,7 @@ class WahaService
             // If fallback is enabled and feature is not supported, send as formatted text
             if ($fallbackToText && $isNotSupported) {
                 Log::info('WAHA: Poll not supported, falling back to text message', [
-                    'session' => $sessionId,
+                    'session' => $this->getWahaSessionName($sessionId),
                     'chatId' => $chatId,
                 ]);
                 
@@ -1659,7 +1679,7 @@ class WahaService
                 // If fallback is enabled and status is PENDING, send as text message
                 if ($fallbackToText && $isPending) {
                     Log::warning('WAHA: Button message status is PENDING, falling back to text message', [
-                        'session' => $sessionId,
+                        'session' => $this->getWahaSessionName($sessionId),
                         'chatId' => $chatId,
                         'note' => 'Buttons are deprecated in WAHA and may not work as expected',
                     ]);
@@ -1914,7 +1934,7 @@ class WahaService
     {
         try {
             $params = [
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
                 'limit' => $limit,
                 'offset' => $offset,
                 'sortBy' => $sortBy,
@@ -1952,7 +1972,7 @@ class WahaService
         try {
             $params = [
                 'contactId' => $contactId,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
             ];
 
             $response = $this->httpClient()
@@ -2023,11 +2043,11 @@ class WahaService
         try {
             $params = [
                 'phone' => $phone,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
             ];
 
             Log::info('WAHA: Checking phone exists', [
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
                 'phone' => $phone,
                 'url' => "{$this->baseUrl}/api/contacts/check-exists",
             ]);
@@ -2097,7 +2117,7 @@ class WahaService
             ];
         } catch (\Exception $e) {
             Log::error('WAHA check phone exists error: ' . $e->getMessage(), [
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
                 'phone' => $phone,
                 'exception' => $e->getTraceAsString(),
             ]);
@@ -2116,7 +2136,7 @@ class WahaService
         try {
             $params = [
                 'contactId' => $contactId,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
             ];
 
             $response = $this->httpClient()
@@ -2150,7 +2170,7 @@ class WahaService
         try {
             $params = [
                 'contactId' => $contactId,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
             ];
 
             if ($refresh) {
@@ -2188,7 +2208,7 @@ class WahaService
         try {
             $payload = [
                 'contactId' => $contactId,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
             ];
 
             $response = $this->httpClient()
@@ -2222,7 +2242,7 @@ class WahaService
         try {
             $payload = [
                 'contactId' => $contactId,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
             ];
 
             $response = $this->httpClient()
@@ -2594,7 +2614,7 @@ class WahaService
             $url = "{$this->baseUrl}/api/messages";
             
             $params = [
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
                 'limit' => $limit,
             ];
 
@@ -2605,7 +2625,7 @@ class WahaService
 
             Log::info('WAHA: Getting messages', [
                 'url' => $url,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
                 'chatId' => $chatId,
                 'limit' => $limit,
             ]);
@@ -2743,7 +2763,7 @@ class WahaService
 
             Log::info('WAHA: Getting message by ID', [
                 'url' => $url,
-                'session' => $sessionId,
+                'session' => $this->getWahaSessionName($sessionId),
                 'chatId' => $chatId,
                 'messageId' => $messageId,
                 'downloadMedia' => $downloadMedia,

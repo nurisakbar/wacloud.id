@@ -347,15 +347,7 @@ class WebhookController extends Controller
         $event = $request->input('event');
         $payload = $request->input('payload', []);
         
-        // Log webhook receipt for debugging
-        Log::debug('Webhook: Received event', [
-            'session_id' => $sessionId,
-            'session_db_id' => $session->id,
-            'session_name' => $session->session_name,
-            'session_phone' => $session->phone_number,
-            'event' => $event,
-            'user_id' => $session->user_id,
-        ]);
+        // (webhook receive tidak dicatat ke debug log)
 
         // ============================================
         // BUILT-IN WEBHOOK: Auto-save messages to database

@@ -127,9 +127,69 @@
                     </ul>
                 </div>
             </div>
+            {{-- ── Debug Mode Card ─────────────────────────────────────────── --}}
+            <div class="card shadow mb-4 border-left-{{ $debugModeEnabled ? 'warning' : 'secondary' }}" id="debug-card">
+                <div class="card-header py-3 d-flex align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold {{ $debugModeEnabled ? 'text-warning' : 'text-secondary' }}">
+                        <i class="fas fa-bug mr-1"></i> Debug Mode
+                    </h6>
+                    <span id="debug-badge"
+                          class="badge badge-{{ $debugModeEnabled ? 'warning' : 'secondary' }} badge-pill px-3 py-2"
+                          style="font-size:.8rem;">
+                        {{ $debugModeEnabled ? 'ON' : 'OFF' }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        Aktifkan untuk mencatat log detail ke <code>storage/logs/laravel.log</code>.
+                        Mencakup: pembuatan/pair/hapus device, pengiriman pesan, dan webhook.
+                        Bisa diaktifkan di environment manapun (local maupun production).
+                    </p>
+
+                    {{-- Alert feedback --}}
+                    <div id="debug-alert" class="alert py-2 small" role="alert"
+                         style="{{ $debugModeEnabled ? '' : 'display:none;' }}
+                                background: #fff3cd; border-color: #ffc107; color: #856404;">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        <strong>Debug mode sedang aktif.</strong>
+                        Log verbose ditulis ke <code>laravel.log</code> — nonaktifkan jika tidak dibutuhkan.
+                    </div>
+
+                    {{-- Toggle --}}
+                    <div class="d-flex align-items-center mt-3">
+                        <div class="custom-control custom-switch mr-3">
+                            <input type="checkbox"
+                                   class="custom-control-input"
+                                   id="debug-toggle"
+                                   {{ $debugModeEnabled ? 'checked' : '' }}>
+                            <label class="custom-control-label font-weight-bold" for="debug-toggle">
+                                <span id="debug-label">
+                                    {{ $debugModeEnabled ? 'Debug mode aktif' : 'Debug mode nonaktif' }}
+                                </span>
+                            </label>
+                        </div>
+                        <span id="debug-spinner" class="spinner-border spinner-border-sm text-warning ml-2" role="status" style="display:none;">
+                            <span class="sr-only">Loading...</span>
+                        </span>
+                    </div>
+
+                    <div id="debug-result" class="mt-2 small text-muted"></div>
+
+                    <hr>
+                    <div class="small text-muted">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Log dapat dilihat di:
+                        <a href="{{ route('admin.logs.index') }}" target="_blank">
+                            <i class="fas fa-external-link-alt ml-1"></i> Admin › Log Viewer
+                        </a>
+                        atau via terminal:
+                        <code>tail -f storage/logs/laravel.log | grep '\[DEBUG\]'</code>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Quota Information Card -->
+        {{-- Quota Information Card --}}
         <div class="col-lg-4">
             <div class="card shadow mb-4 border-left-success">
                 <div class="card-header py-3">
@@ -327,6 +387,75 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatNumber(num) {
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
+    // ── Debug Mode Toggle ─────────────────────────────────────────────────
+    const debugToggle  = document.getElementById('debug-toggle');
+    const debugSpinner = document.getElementById('debug-spinner');
+    const debugBadge   = document.getElementById('debug-badge');
+    const debugLabel   = document.getElementById('debug-label');
+    const debugAlert   = document.getElementById('debug-alert');
+    const debugCard    = document.getElementById('debug-card');
+    const debugResult  = document.getElementById('debug-result');
+
+    if (debugToggle) {
+        debugToggle.addEventListener('change', function () {
+            debugToggle.disabled = true;
+            debugSpinner.style.display = 'inline-block';
+            debugResult.textContent = '';
+
+            fetch('{{ route("admin.settings.toggle-debug") }}', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const on = data.enabled;
+
+                    // Badge
+                    debugBadge.textContent = on ? 'ON' : 'OFF';
+                    debugBadge.className = 'badge badge-' + (on ? 'warning' : 'secondary') + ' badge-pill px-3 py-2';
+
+                    // Card border + header color
+                    debugCard.className = 'card shadow mb-4 border-left-' + (on ? 'warning' : 'secondary');
+                    debugCard.querySelector('.card-header h6').className =
+                        'm-0 font-weight-bold ' + (on ? 'text-warning' : 'text-secondary');
+
+                    // Label
+                    debugLabel.textContent = on ? 'Debug mode aktif' : 'Debug mode nonaktif';
+
+                    // Alert banner
+                    debugAlert.style.display = on ? 'block' : 'none';
+
+                    // Result feedback
+                    debugResult.innerHTML =
+                        '<span class="text-' + (on ? 'warning' : 'secondary') + '">' +
+                        '<i class="fas fa-' + (on ? 'check' : 'check') + '-circle mr-1"></i>' +
+                        data.message + '</span>';
+                } else {
+                    // Revert toggle on error
+                    debugToggle.checked = !debugToggle.checked;
+                    debugResult.innerHTML =
+                        '<span class="text-danger"><i class="fas fa-times-circle mr-1"></i>' +
+                        (data.message || 'Gagal mengubah status debug.') + '</span>';
+                }
+            })
+            .catch(() => {
+                debugToggle.checked = !debugToggle.checked;
+                debugResult.innerHTML =
+                    '<span class="text-danger"><i class="fas fa-times-circle mr-1"></i>Koneksi error.</span>';
+            })
+            .finally(() => {
+                debugToggle.disabled = false;
+                debugSpinner.style.display = 'none';
+            });
+        });
+    }
+    // ─────────────────────────────────────────────────────────────────────
 });
 </script>
 @endpush

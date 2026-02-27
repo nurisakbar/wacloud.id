@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings', [App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
         Route::get('/settings/quota-stats', [App\Http\Controllers\Admin\SettingController::class, 'getQuotaStats'])->name('settings.quota-stats');
         Route::post('/settings/test-connection', [App\Http\Controllers\Admin\SettingController::class, 'testConnection'])->name('settings.test-connection');
+        Route::post('/settings/toggle-debug', [App\Http\Controllers\Admin\SettingController::class, 'toggleDebug'])->name('settings.toggle-debug');
         Route::get('/quota-purchases', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'index'])->name('quota-purchases.index');
         Route::get('/quota-purchases/{quotaPurchase}', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'show'])->name('quota-purchases.show');
         Route::post('/quota-purchases/{quotaPurchase}/approve', [App\Http\Controllers\Admin\QuotaPurchaseController::class, 'approve'])->name('quota-purchases.approve');

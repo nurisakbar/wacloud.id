@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\WhatsAppSession;
+use App\Helpers\DebugLog;
 use App\Services\WahaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -45,6 +46,13 @@ class SessionController extends Controller
     public function store(Request $request)
     {
         $startTime = microtime(true);
+
+        DebugLog::log('[Session] store(): Create device request', [
+            'user_id'      => Auth::id(),
+            'session_name' => $request->session_name,
+            'phone_number' => $request->phone_number,
+            'ip'           => $request->ip(),
+        ]);
         
         // Security: Validate request
         $request->validate([
@@ -273,6 +281,13 @@ class SessionController extends Controller
     {
         $this->authorize('update', $session);
 
+        DebugLog::log('[Session] update(): Rename device', [
+            'session_id'      => $session->session_id,
+            'old_name'        => $session->session_name,
+            'new_name'        => $request->session_name,
+            'user_id'         => Auth::id(),
+        ]);
+
         $request->validate([
             'session_name' => 'required|string|max:255',
         ]);
@@ -298,10 +313,14 @@ class SessionController extends Controller
      */
     public function pair(WhatsAppSession $session)
     {
-        // Increase execution time limit to 2 minutes for QR code generation
         set_time_limit(120);
-        
         $this->authorize('view', $session);
+
+        DebugLog::log('[Session] pair(): QR pair page loaded', [
+            'session_id' => $session->session_id,
+            'status'     => $session->status,
+            'user_id'    => Auth::id(),
+        ]);
 
         // If already connected, redirect to show page
         if ($session->status === 'connected') {
@@ -577,6 +596,12 @@ class SessionController extends Controller
     public function destroy(WhatsAppSession $session)
     {
         $this->authorize('delete', $session);
+
+        DebugLog::log('[Session] destroy(): Delete device', [
+            'session_id'   => $session->session_id,
+            'session_name' => $session->session_name,
+            'user_id'      => Auth::id(),
+        ]);
 
         $sessionId = $session->session_id;
         $sessionDbId = $session->id;

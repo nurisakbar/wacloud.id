@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\DebugLog;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,14 +21,16 @@ class SettingController extends Controller
      */
     public function index()
     {
-        $notificationApiKey = Setting::getValue('notification_api_key', '');
+        $notificationApiKey   = Setting::getValue('notification_api_key', '');
         $notificationDeviceId = Setting::getValue('notification_device_id', '');
-        $notificationBaseUrl = Setting::getValue('notification_base_url', '');
-        
+        $notificationBaseUrl  = Setting::getValue('notification_base_url', '');
+        $debugModeEnabled     = DebugLog::isEnabled();
+
         return view('admin.settings.index', compact(
-            'notificationApiKey', 
+            'notificationApiKey',
             'notificationDeviceId',
-            'notificationBaseUrl'
+            'notificationBaseUrl',
+            'debugModeEnabled'
         ));
     }
 
@@ -246,6 +249,22 @@ class SettingController extends Controller
                 ],
             ], 500);
         }
+    }
+
+    /**
+     * Toggle debug mode on/off
+     */
+    public function toggleDebug()
+    {
+        $newState = DebugLog::toggle();
+
+        return response()->json([
+            'success' => true,
+            'enabled' => $newState,
+            'message' => $newState
+                ? 'Debug mode AKTIF — log detail akan ditulis ke laravel.log'
+                : 'Debug mode NONAKTIF — log dibersihkan dari output verbose',
+        ]);
     }
 
     /**
